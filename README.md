@@ -1,0 +1,2 @@
+A node.js application that uses the spotify API and other tools to always gets the lyrics to the users current song. Some songs on spotify, especially smaller ones, don't yet have built in 
+lyrics and I want this application to solve that problem. This tool will save listeners the hastle of googling lyrics to songs by simply getting them for you automatically.
