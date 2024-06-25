@@ -5,14 +5,29 @@ const querystring = require("querystring");
 const app = express();
 
 let token;
+
 let song_name;
 let song_artist;
+let genius_url;
+let genius_id;
 
-
-app.get("/", (req, res) => {
+//main page
+app.get("/", async (req, res) => {
+    //add login logic here, if no toke, redirect to login,
+    //need to store token somewhere specific to user instead of one variable, once we set token once it never checks again
     res.sendFile(__dirname + "/home.html");
 })
 
+//getting genius embed script
+app.get("/embed_script.js", async (req, res) => {
+    const url = `https://genius.com/songs/${genius_id}/embed.js`;
+    const res2 = await fetch(url);
+    const script_text = await res2.text();
+
+    res.send(script_text);
+})
+
+//spotify login
 app.get("/login", (req, res) => {
 
     //redirect useres to login with spotify and authorize us to see their playback
@@ -57,17 +72,30 @@ app.get("/callback", async (req, res) => {
         song_name = song_data_json["item"]["name"];
         song_artist = song_data_json["item"]["artists"][0]["name"];
 
+        console.log(song_name + " by, " + song_artist);
 
         //get genius url
-        const genius_response = await fetch("https://api.genius.com/search?q=" + song_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_ID}`}});
-        const genius_json = await genius_response.json();
-        const genius_url = genius_json["response"]["hits"][0]["result"]["url"];
+        let genius_response = await fetch("https://api.genius.com/search?q=" + song_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_ID}`}});
+        let genius_json = await genius_response.json();
+        //no search results
+        if (genius_json["response"]["hits"].length == 0) {
+            genius_response = await fetch("https://api.genius.com/search?q=" + song_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_ID}`}});
+            genius_json = await genius_response.json();
+        }
 
-        res.redirect(genius_url);
+        if (genius_json["response"]["hits"].length != 0) {
+            genius_url = genius_json["response"]["hits"][0]["result"]["url"];
+            genius_id = genius_json["response"]["hits"][0]["result"]["id"];
+        }
+        res.redirect("/");
     } else {
         //user hit cancel
         res.redirect("https://www.youtube.com/watch?v=D2_r4q2imnQ"); //troll them
     }
 })
+
+app.get("/embed_data", (req, res) => {
+    res.json({id: genius_id, url: genius_url, title: song_name, artist: song_artist});
+});
 
 app.listen(3000);
