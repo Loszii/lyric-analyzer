@@ -6,30 +6,43 @@ const querystring = require("querystring");
 const app = express();
 app.use(cookieParser());
 
-//move these to the front end to be user specific
-
-let song_name;
-let song_artist;
-let genius_url;
-let genius_id;
-
 //main page
 app.get("/", async (req, res) => {
-    //add login logic here, if no toke, redirect to login,
-    //need to store token somewhere specific to user instead of one variable, once we set token once it never checks again
+    //main page, redirects user to authorization or sends them the home.html
     const token = req.cookies.token;
+
     if (token == undefined) {
-        console.log("going back to login, no token");
-        res.redirect("/login");
+        console.log("HAVING USER AUTHORIZE WITH SPOTIFY");
+        //redirect useres to login with spotify and authorize us to see their playback
+        res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
+            response_type: "code",
+            client_id: process.env.CLIENT_ID,
+            redirect_uri: "http://localhost:3000/callback",
+            scope: "user-read-playback-state"
+        }
+        ));
     } else {
-        await get_spotify_data(req, res, token);
+        await store_song_data(req, res);
         res.sendFile(__dirname + "/home.html");
     }
 })
 
+app.get("/style.css", (req, res) => {
+    res.sendFile(__dirname + "/style.css");
+})
+
+app.get("/embed_div.js", (req, res) => {
+    //get the js code to create embed div
+    res.sendFile(__dirname + "/embed_div.js")
+})
+
 //getting genius embed script
 app.get("/embed_script.js", async (req, res) => {
-    const url = `https://genius.com/songs/${genius_id}/embed.js`;
+    //send the correct genius script to embed
+
+    const id = req.cookies.id;
+
+    const url = `https://genius.com/songs/${id}/embed.js`;
     const res2 = await fetch(url);
     const script_text = await res2.text();
 
@@ -40,20 +53,6 @@ app.get("/script.js", (req, res) => {
     res.sendFile(__dirname + "/script.js");
 })
 
-//spotify login
-app.get("/login", (req, res) => {
-
-    //redirect useres to login with spotify and authorize us to see their playback
-    res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
-        response_type: "code",
-        client_id: process.env.CLIENT_ID,
-        redirect_uri: "http://localhost:3000/callback",
-        scope: "user-read-playback-state"
-    }
-    ));
-
-})
-
 //handling get requests after user login
 app.get("/callback", async (req, res) => {
 
@@ -61,7 +60,6 @@ app.get("/callback", async (req, res) => {
     const code = req.query.code || null;
 
     if (code) { //authorized
-
         //get token
         const data = await fetch("https://accounts.spotify.com/api/token", {
             method: "POST",
@@ -82,7 +80,6 @@ app.get("/callback", async (req, res) => {
         res.cookie("token", token, {
             httpOnly: true,
             secure: true,
-            sameSite: 'Strict',
             maxAge: 3600000 // 1 hour
         });
 
@@ -94,21 +91,45 @@ app.get("/callback", async (req, res) => {
     }
 })
 
-async function get_spotify_data(req, res, token) {
-    //calls spotify api with our token, need to send this data to front end
+async function get_song_data(req, res) {
+    //returns song data by calling spotify api
+    let song_name;
+    let song_artist;
+    let song_image;
 
+    const token = req.cookies.token;
     const cur_data = await fetch("https://api.spotify.com/v1/me/player", {headers: {Authorization: `Bearer ${token}`}}); //using our access token
-    const song_data_json = await cur_data.json();
 
-    song_name = song_data_json["item"]["name"];
-    song_artist = song_data_json["item"]["artists"][0]["name"];
+    if (cur_data.statusText != "No Content") {
+        const song_data_json = await cur_data.json();
+        if (song_data_json["item"] != undefined) {
+            song_name = song_data_json["item"]["name"];
+            song_artist = song_data_json["item"]["artists"][0]["name"];
+            song_image = song_data_json["item"]["album"]["images"][0]["url"];
+    
+            console.log(song_name + " by, " + song_artist);
+        
+            
+            return genius_search_result(req, res, song_name, song_artist, song_image);
+        } else {
+            console.log("CANNOT GET ITEM")
+            return false;
+        }
+    } else {
+        console.log("NO ACTIVE SESSION")
+        return false;
+    }
+}
 
-    console.log(song_name + " by, " + song_artist);
+async function genius_search_result(req, res, song_name, song_artist, song_image) {
+    //uses genius api to search for the best fitting song
 
-    //get genius url
     let genius_response = await fetch("https://api.genius.com/search?q=" + song_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_ID}`}});
     let genius_json = await genius_response.json();
-    //no search results
+    let genius_url;
+    let genius_id;
+
+    //getting best search result
     if (genius_json["response"]["hits"].length == 0) {
         genius_response = await fetch("https://api.genius.com/search?q=" + song_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_ID}`}});
         genius_json = await genius_response.json();
@@ -118,10 +139,37 @@ async function get_spotify_data(req, res, token) {
         genius_url = genius_json["response"]["hits"][0]["result"]["url"];
         genius_id = genius_json["response"]["hits"][0]["result"]["id"];
     }
+
+    return {"title": song_name, "artist": song_artist, "image": song_image, "url": genius_url, "id": genius_id};
 }
 
-app.get("/embed_data", (req, res) => {
-    res.json({id: genius_id, url: genius_url, title: song_name, artist: song_artist});
-});
+async function store_song_data(req, res) {
+    //get song data and put in cookies
+
+    let data = await get_song_data(req, res);
+
+    //set data in browsers cookies
+    if (data) {
+        res.cookie("title", data["title"]);
+        res.cookie("artist", data["artist"]);
+        res.cookie("image", data["image"])
+        res.cookie("url", data["url"]);
+        res.cookie("id", data["id"]);
+    } else {
+        res.cookie("id", undefined);
+    }
+}
+
+app.get("/api/check-update", async (req, res) => {
+    let data = await get_song_data(req, res);
+
+    if (data) {
+        if (data["id"] == req.cookies.id) {
+            res.json({status: true});
+        } else {
+            res.json({status: false});
+        }
+    }
+})
 
 app.listen(3000);
