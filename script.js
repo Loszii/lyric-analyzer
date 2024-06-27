@@ -1,5 +1,5 @@
 //genius embed script
-function set_embed() {
+function set_thumbnail() {
     let cookies = document.cookie;
     let parsed = cookies.split("; ");
     let image;
@@ -28,7 +28,7 @@ function set_embed() {
         }
     }
 
-    if (image != undefined && title != undefined) {
+    if (image != undefined && title != undefined && artist != undefined) {
         let decoded_image = decodeURIComponent(image);
         let decoded_title = decodeURIComponent(title);
         let decoded_artist = decodeURIComponent(artist);
@@ -47,5 +47,14 @@ async function check_update() {
     }
 }
 
-set_embed();
+async function get_lyrics() {
+    let res = await fetch("/api/lyrics")
+    let data = await res.json();
+    let lyrics = data["lyrics"];
+
+    document.getElementById("lyrics").innerText = lyrics;
+}
+
+get_lyrics();
+set_thumbnail();
 setInterval(check_update, 5000); //check new song every 5 seconds

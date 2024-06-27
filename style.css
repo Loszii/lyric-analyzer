@@ -2,27 +2,33 @@ body {
     background-image: linear-gradient(grey, black);
     background-attachment: fixed;
     overflow-x: hidden;
+    font-family: "Inter Tight", sans-serif;
 }
 
 #container {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
 }
 
-#embed {
-    max-width: 100%;
+#lyrics {
+    line-height: 200%;
+    flex-basis: 50%;
+    padding-left: 2rem;
+    color: white;
+}
+
+#thumb-container {
+    flex-basis: 40%;
 }
 
 #thumbnail {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
 }
 
 #thumbnail h1 {
     background-color: white;
     font-size: 3rem;
     text-align: center;
-    font-family: "Inter Tight", sans-serif;
     border-radius: 5px;
 }

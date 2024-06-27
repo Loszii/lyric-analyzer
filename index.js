@@ -2,6 +2,7 @@ require("dotenv").config();
 const cookieParser = require('cookie-parser');
 const express = require("express");
 const querystring = require("querystring");
+const { JSDOM } = require("jsdom");
 
 const app = express();
 app.use(cookieParser());
@@ -31,23 +32,6 @@ app.get("/style.css", (req, res) => {
     res.sendFile(__dirname + "/style.css");
 })
 
-app.get("/embed_div.js", (req, res) => {
-    //get the js code to create embed div
-    res.sendFile(__dirname + "/embed_div.js")
-})
-
-//getting genius embed script
-app.get("/embed_script.js", async (req, res) => {
-    //send the correct genius script to embed
-
-    const id = req.cookies.id;
-
-    const url = `https://genius.com/songs/${id}/embed.js`;
-    const res2 = await fetch(url);
-    const script_text = await res2.text();
-
-    res.send(script_text);
-})
 
 app.get("/script.js", (req, res) => {
     res.sendFile(__dirname + "/script.js");
@@ -170,6 +154,25 @@ app.get("/api/check-update", async (req, res) => {
             res.json({status: false});
         }
     }
+})
+
+app.get("/api/lyrics", async (req, res) => {
+    //scrapes the lyrics off of genius url in cookies
+    let url = decodeURIComponent(req.cookies.url);
+    console.log(url);
+    let genius_site = await fetch(url);
+    let genius_html = await genius_site.text();
+    const dom = new JSDOM(genius_html);
+    const divs = dom.window.document.querySelectorAll("div");
+    let lyrics = ""
+    divs.forEach(e => {
+        if (e.dataset.lyricsContainer) {
+            e.innerHTML = e.innerHTML.replace(/<br\s*\/?>/gi, '\n'); //replacing br with \n
+            lyrics += e.textContent + "\n";
+        }
+    });
+
+    res.json({"lyrics": lyrics});
 })
 
 app.listen(3000);
