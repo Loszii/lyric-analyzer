@@ -55,6 +55,29 @@ async function get_lyrics() {
     document.getElementById("lyrics").innerText = lyrics;
 }
 
-get_lyrics();
+async function get_analysis(lyrics) {
+    let res = await fetch("/api/analysis", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({"lyrics": lyrics})
+    })
+    let data = await res.json();
+    let analysis = data["analysis"];
+
+    document.getElementById("analysis").innerHTML = analysis;
+}
+
+//to do, add button with even listener, will use highlighted text to prompt ai
+
+document.getElementById("analyze-button").addEventListener("click", () => {
+    if (window.getSelection().toString().trim() != "") {
+        lyrics = window.getSelection().toString();
+        console.log(lyrics);
+        get_analysis(lyrics);
+    } else {
+        document.getElementById("analysis").innerHTML = "No Selected Content";
+    }
+})
+
 set_thumbnail();
-setInterval(check_update, 5000); //check new song every 5 seconds
+get_lyrics();

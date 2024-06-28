@@ -1,7 +1,7 @@
 {
-  "name": "lyric-finder",
+  "name": "lyric-analyzer",
   "version": "1.0.0",
-  "description": "A node.js application that uses the spotify API and other tools to always gets the lyrics to the users current song. Some songs on spotify, especially smaller ones, don't yet have built in \r lyrics and I want this application to solve that problem. This tool will save listeners the hastle of googling lyrics to songs by simply getting them for you automatically.",
+  "description": "An application to get lyrics via currently playing Spotify song and analyze them using AI.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,9 +10,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.14.0",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "jsdom": "^24.1.0"
+    "jsdom": "^24.1.0",
+    "markdown-it": "^14.1.0"
   }
 }

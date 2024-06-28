@@ -1,34 +1,71 @@
 body {
     background-image: linear-gradient(grey, black);
     background-attachment: fixed;
-    overflow-x: hidden;
     font-family: "Inter Tight", sans-serif;
+    margin: 0;
+    margin-top: 2rem;
+    padding: 0;
 }
 
 #container {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-evenly;
+    gap: 1rem;
+}
+
+#lyrics-container {
+    height: 90vh;
+    flex-basis: 30%;
+    overflow-y: auto;
+    direction: rtl;
 }
 
 #lyrics {
+    padding-left: 1rem;
     line-height: 200%;
-    flex-basis: 50%;
-    padding-left: 2rem;
     color: white;
+    direction: ltr;
+}
+
+#analysis-container {
+    flex-basis: 30%;
+}
+
+#analyze-button {
+    padding: 0.5rem;
+    font-size: 3rem;
+    display: block;
+    margin: auto;
+    background-color: grey;
+    color: white;
+    border-radius: 5px;
+}
+
+#analysis {
+    height: 75vh;
+    flex-basis: 30%;
+    overflow-y: auto;
+
+    margin-top: 3rem;
+    padding-right: 1rem;
+    line-height: 200%;
+    color: white;
+    text-align: center;
 }
 
 #thumb-container {
-    flex-basis: 40%;
+    flex-basis: 30%;
 }
 
-#thumbnail {
-    position: fixed;
+#thumbnail img {
+    width: 100%;
+    height: auto;
 }
 
 #thumbnail h1 {
     background-color: white;
-    font-size: 3rem;
+    font-size: 2rem;
     text-align: center;
     border-radius: 5px;
 }

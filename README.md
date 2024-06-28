@@ -1,2 +1,1 @@
-A node.js application that uses the spotify API and other tools to always gets the lyrics to the users current song. Some songs on spotify, especially smaller ones, don't yet have built in 
-lyrics and I want this application to solve that problem. This tool will save listeners the hastle of googling lyrics to songs by simply getting them for you automatically.
+This is a WIP application that will get the users currently playing song via Spotify and offer a lyrical analysis. The lyrics are forged via the website genius then analyzed with AI. More specifically the gemini API from google, which is used to analyze lyrics relative to the user's choosing.

@@ -3,9 +3,41 @@ const cookieParser = require('cookie-parser');
 const express = require("express");
 const querystring = require("querystring");
 const { JSDOM } = require("jsdom");
+const { HarmBlockThreshold, HarmCategory, GoogleGenerativeAI } = require("@google/generative-ai");
+const markdownIt = require("markdown-it");
 
+//setting up google ai
+const safety_settings = [
+    {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    }
+];
+
+const genAI = new GoogleGenerativeAI(process.env.AI_KEY);
+const model = genAI.getGenerativeModel({model: "gemini-1.5-flash", safetySettings: safety_settings});
+
+console.log(model);
+
+const md = markdownIt(); //for markdown to html
+
+
+//setting up app
 const app = express();
-app.use(cookieParser());
+app.use(express.json()); //for parsing body
+app.use(cookieParser()); //for cookies
 
 //main page
 app.get("/", async (req, res) => {
@@ -173,6 +205,17 @@ app.get("/api/lyrics", async (req, res) => {
     });
 
     res.json({"lyrics": lyrics});
+})
+
+app.post("/api/analysis", async (req, res) => {
+    const to_prepend = "I am going to send you lines of lyrics to a song, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n"
+    const lyrics = req.body.lyrics;
+    const prompt = to_prepend + lyrics;
+    const result = await model.generateContent(prompt);
+    const ai_response = result.response;
+
+    const text = md.render(ai_response.text());
+    res.json({"analysis": text});
 })
 
 app.listen(3000);
