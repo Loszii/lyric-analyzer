@@ -56,6 +56,7 @@ async function get_lyrics() {
 }
 
 async function get_analysis(lyrics) {
+    //analyzes highlighted lyrics
     let res = await fetch("/api/analysis", {
         method: "POST",
         headers: {'Content-Type': 'application/json'},
@@ -64,10 +65,21 @@ async function get_analysis(lyrics) {
     let data = await res.json();
     let analysis = data["analysis"];
 
-    document.getElementById("analysis").innerHTML = analysis;
+    if (analysis != "") {
+        document.getElementById("analysis").innerHTML = analysis;
+    } else {
+        document.getElementById("analysis").innerHTML = "ERROR";
+    }
 }
 
-//to do, add button with even listener, will use highlighted text to prompt ai
+async function get_summary() {
+    //gets the summary of song
+    let res = await fetch("/api/summary");
+    let data = await res.json();
+    let summary = data["summary"];
+
+    document.getElementById("analysis").innerHTML = summary;
+}
 
 document.getElementById("analyze-button").addEventListener("click", () => {
     if (window.getSelection().toString().trim() != "") {
@@ -81,3 +93,4 @@ document.getElementById("analyze-button").addEventListener("click", () => {
 
 set_thumbnail();
 get_lyrics();
+get_summary();

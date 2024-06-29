@@ -29,8 +29,6 @@ const safety_settings = [
 const genAI = new GoogleGenerativeAI(process.env.AI_KEY);
 const model = genAI.getGenerativeModel({model: "gemini-1.5-flash", safetySettings: safety_settings});
 
-console.log(model);
-
 const md = markdownIt(); //for markdown to html
 
 
@@ -138,25 +136,23 @@ async function get_song_data(req, res) {
 }
 
 async function genius_search_result(req, res, song_name, song_artist, song_image) {
-    //uses genius api to search for the best fitting song
+    //uses genius api to search for the best fitting song and add its url to object to be returned
 
-    let genius_response = await fetch("https://api.genius.com/search?q=" + song_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_ID}`}});
+    let genius_response = await fetch("https://api.genius.com/search?q=" + song_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
     let genius_json = await genius_response.json();
     let genius_url;
-    let genius_id;
 
     //getting best search result
     if (genius_json["response"]["hits"].length == 0) {
-        genius_response = await fetch("https://api.genius.com/search?q=" + song_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_ID}`}});
+        genius_response = await fetch("https://api.genius.com/search?q=" + song_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
         genius_json = await genius_response.json();
     }
 
     if (genius_json["response"]["hits"].length != 0) {
         genius_url = genius_json["response"]["hits"][0]["result"]["url"];
-        genius_id = genius_json["response"]["hits"][0]["result"]["id"];
     }
 
-    return {"title": song_name, "artist": song_artist, "image": song_image, "url": genius_url, "id": genius_id};
+    return {"title": song_name, "artist": song_artist, "image": song_image, "url": genius_url};
 }
 
 async function store_song_data(req, res) {
@@ -170,9 +166,8 @@ async function store_song_data(req, res) {
         res.cookie("artist", data["artist"]);
         res.cookie("image", data["image"])
         res.cookie("url", data["url"]);
-        res.cookie("id", data["id"]);
     } else {
-        res.cookie("id", undefined);
+        res.cookie("title", undefined);
     }
 }
 
@@ -180,7 +175,7 @@ app.get("/api/check-update", async (req, res) => {
     let data = await get_song_data(req, res);
 
     if (data) {
-        if (data["id"] == req.cookies.id) {
+        if (data["url"] == req.cookies.url) {
             res.json({status: true});
         } else {
             res.json({status: false});
@@ -192,6 +187,7 @@ app.get("/api/lyrics", async (req, res) => {
     //scrapes the lyrics off of genius url in cookies
     let url = decodeURIComponent(req.cookies.url);
     console.log(url);
+
     let genius_site = await fetch(url);
     let genius_html = await genius_site.text();
     const dom = new JSDOM(genius_html);
@@ -208,7 +204,10 @@ app.get("/api/lyrics", async (req, res) => {
 })
 
 app.post("/api/analysis", async (req, res) => {
-    const to_prepend = "I am going to send you lines of lyrics to a song, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n"
+    let title = req.cookies.title;
+    let artist = req.cookies.artist;
+
+    const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artist}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
     const lyrics = req.body.lyrics;
     const prompt = to_prepend + lyrics;
     const result = await model.generateContent(prompt);
@@ -216,6 +215,17 @@ app.post("/api/analysis", async (req, res) => {
 
     const text = md.render(ai_response.text());
     res.json({"analysis": text});
+})
+
+app.get("/api/summary", async (req, res) => {
+    let title = req.cookies.title;
+    let artist = req.cookies.artist;
+    const prompt = `Write a summary about the song ${title}, by ${artist}. Add the data and album as well. If you do not have access to real-time information about the data and album just write the summary.`;
+
+    const result = await model.generateContent(prompt);
+    const ai_response = result.response;
+    const text = md.render(ai_response.text());
+    res.json({"summary": text});
 })
 
 app.listen(3000);
