@@ -171,18 +171,6 @@ async function store_song_data(req, res) {
     }
 }
 
-app.get("/api/check-update", async (req, res) => {
-    let data = await get_song_data(req, res);
-
-    if (data) {
-        if (data["url"] == req.cookies.url) {
-            res.json({status: true});
-        } else {
-            res.json({status: false});
-        }
-    }
-})
-
 app.get("/api/lyrics", async (req, res) => {
     //scrapes the lyrics off of genius url in cookies
     let url = decodeURIComponent(req.cookies.url);
@@ -204,28 +192,49 @@ app.get("/api/lyrics", async (req, res) => {
 })
 
 app.post("/api/analysis", async (req, res) => {
+    //generates an analysis of the current selected lyrics
     let title = req.cookies.title;
     let artist = req.cookies.artist;
 
     const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artist}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
     const lyrics = req.body.lyrics;
     const prompt = to_prepend + lyrics;
-    const result = await model.generateContent(prompt);
-    const ai_response = result.response;
-
-    const text = md.render(ai_response.text());
-    res.json({"analysis": text});
+    const result = await model.generateContentStream(prompt);
+    for await (const chunk of result.stream) {
+        if (chunk.candidates[0].finishReason == "OTHER") {
+            res.write("\n### ERROR, cannot analyze specific slurs.");
+            break;
+        } else {
+            res.write(chunk.text());
+        }
+    }
+    res.end();
 })
 
-app.get("/api/summary", async (req, res) => {
+app.post("/api/summary", async (req, res) => {
+    //generates a summary of the current song using all lyrics
     let title = req.cookies.title;
     let artist = req.cookies.artist;
-    const prompt = `Write a summary about the song ${title}, by ${artist}. Add the data and album as well. If you do not have access to real-time information about the data and album just write the summary.`;
+    const lyrics = req.body.lyrics;
+    const prompt = `Write a summary about the song ${title}, by ${artist}. Here is a copy of the lyrics, ${lyrics}.`;
 
-    const result = await model.generateContent(prompt);
-    const ai_response = result.response;
-    const text = md.render(ai_response.text());
-    res.json({"summary": text});
+    const result = await model.generateContentStream(prompt);
+    for await (const chunk of result.stream) {
+        if (chunk.candidates[0].finishReason == "OTHER") {
+            res.write("\n### ERROR, cannot analyze specific slurs.");
+            break;
+        } else {
+            res.write(chunk.text());
+        }
+    }
+    res.end();
+
+})
+
+app.post("/api/format", async (req, res) => {
+    //formats the ai response using markdown
+    const ai_text = req.body.ai_text;
+    res.json({"formatted": md.render(ai_text)});
 })
 
 app.listen(3000);

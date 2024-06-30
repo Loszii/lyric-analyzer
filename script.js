@@ -1,7 +1,7 @@
-//genius embed script
 function set_thumbnail() {
-    let cookies = document.cookie;
-    let parsed = cookies.split("; ");
+    //searches cookies for information relating to the thumbnail
+    const cookies = document.cookie;
+    const parsed = cookies.split("; ");
     let image;
     let title;
     let artist;
@@ -29,68 +29,103 @@ function set_thumbnail() {
     }
 
     if (image != undefined && title != undefined && artist != undefined) {
-        let decoded_image = decodeURIComponent(image);
-        let decoded_title = decodeURIComponent(title);
-        let decoded_artist = decodeURIComponent(artist);
+        const decoded_image = decodeURIComponent(image);
+        const decoded_title = decodeURIComponent(title);
+        const decoded_artist = decodeURIComponent(artist);
         document.getElementById("thumbnail").innerHTML = `<img src=${decoded_image}><h1>${decoded_title}</h1><h1>${decoded_artist}</h1>`
     }
 }
 
-async function check_update() {
-    //refreshes browser if song has changed
-    let same = await fetch("/api/check-update");
-    let status = await same.json();
-
-    let no_refresh = status["status"];
-    if (!no_refresh) {
-        location.reload();
-    }
-}
-
 async function get_lyrics() {
-    let res = await fetch("/api/lyrics")
-    let data = await res.json();
-    let lyrics = data["lyrics"];
+    //gets the lyrics from backend
+    const res = await fetch("/api/lyrics")
+    const data = await res.json();
+    const lyrics = data["lyrics"];
 
     document.getElementById("lyrics").innerText = lyrics;
 }
 
 async function get_analysis(lyrics) {
-    //analyzes highlighted lyrics
-    let res = await fetch("/api/analysis", {
+    //analyzes highlighted lyrics and writes to analysis div
+    const container = document.getElementById("analysis");
+    container.innerHTML = "";
+
+    const res = await fetch("/api/analysis", {
         method: "POST",
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({"lyrics": lyrics})
     })
-    let data = await res.json();
-    let analysis = data["analysis"];
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
 
-    if (analysis != "") {
-        document.getElementById("analysis").innerHTML = analysis;
-    } else {
-        document.getElementById("analysis").innerHTML = "ERROR";
+    //append each chunk of stream while reading and decoding
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+            break;
+        } else {
+            container.innerHTML += decoder.decode(value, { stream: true });
+        }
     }
+
+    //format the md
+    const formatted = await fetch("/api/format", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({"ai_text": container.innerHTML})
+    })
+    const formatted_data = await formatted.json();
+    container.innerHTML = formatted_data["formatted"];
+
 }
 
 async function get_summary() {
-    //gets the summary of song
-    let res = await fetch("/api/summary");
-    let data = await res.json();
-    let summary = data["summary"];
+    //gets the summary of song and writes to analysis div
+    const container = document.getElementById("analysis");
+    container.innerHTML = "";
 
-    document.getElementById("analysis").innerHTML = summary;
+    const res = await fetch("/api/summary", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({"lyrics": document.getElementById("lyrics").innerHTML})
+    })
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    //append each chunk of stream while reading and decoding
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+            break;
+        } else {
+            container.innerHTML += decoder.decode(value, { stream: true });
+        }
+    }
+
+    //format the md
+    const formatted = await fetch("/api/format", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({"ai_text": container.innerHTML})
+    })
+    const formatted_data = await formatted.json();
+    container.innerHTML = formatted_data["formatted"];
 }
 
 document.getElementById("analyze-button").addEventListener("click", () => {
+    //send the currently highlighted text to backend for analysis
     if (window.getSelection().toString().trim() != "") {
         lyrics = window.getSelection().toString();
-        console.log(lyrics);
         get_analysis(lyrics);
     } else {
         document.getElementById("analysis").innerHTML = "No Selected Content";
     }
 })
 
-set_thumbnail();
-get_lyrics();
-get_summary();
+async function main() {
+    set_thumbnail();
+    await get_lyrics();
+    get_summary();
+}
+
+main();

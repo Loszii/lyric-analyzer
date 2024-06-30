@@ -19,6 +19,8 @@ body {
     flex-basis: 30%;
     overflow-y: auto;
     direction: rtl;
+    border-color: black;
+    border-style: double;
 }
 
 #lyrics {
