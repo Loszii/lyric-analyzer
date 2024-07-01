@@ -43,28 +43,39 @@ app.get("/", async (req, res) => {
     const token = req.cookies.token;
 
     if (token == undefined) {
-        console.log("HAVING USER AUTHORIZE WITH SPOTIFY");
         //redirect useres to login with spotify and authorize us to see their playback
-        res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
-            response_type: "code",
-            client_id: process.env.CLIENT_ID,
-            redirect_uri: "http://localhost:3000/callback",
-            scope: "user-read-playback-state"
+        if (req.cookies.refresh == undefined) {
+            //no refresh token, redirect to spotify site for auth
+            console.log("HAVING USER AUTHORIZE WITH SPOTIFY");
+            res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
+                response_type: "code",
+                client_id: process.env.CLIENT_ID,
+                redirect_uri: "http://localhost:3000/callback",
+                scope: "user-read-playback-state"
+            }
+            ));
+        } else {
+            //can use refresh token
+            console.log("GOING TO USE ACCESS TOKEN");
+            get_another_token(req, res); //will get a new access token and bring us back here
         }
-        ));
     } else {
         await store_song_data(req, res);
         res.sendFile(__dirname + "/home.html");
     }
 })
 
+//front end files
 app.get("/style.css", (req, res) => {
     res.sendFile(__dirname + "/style.css");
 })
 
-
 app.get("/script.js", (req, res) => {
     res.sendFile(__dirname + "/script.js");
+})
+
+app.get("/res/black.jpg", (req, res) => {
+    res.sendFile(__dirname + "/res/black.jpg");
 })
 
 //handling get requests after user login
@@ -89,12 +100,18 @@ app.get("/callback", async (req, res) => {
         })
         let token_data = await data.json();
         const token = token_data["access_token"];
+        const refresh = token_data["refresh_token"];
+        const expires_in = token_data["expires_in"];
         
         //cookies
         res.cookie("token", token, {
             httpOnly: true,
             secure: true,
-            maxAge: 3600000 // 1 hour
+            maxAge: expires_in*1000 // 1 hour typically (1k for mili)
+        });
+        res.cookie("refresh", refresh, {
+            httpOnly: true,
+            secure: true,
         });
 
         //get song current info
@@ -104,6 +121,40 @@ app.get("/callback", async (req, res) => {
         res.redirect("https://www.youtube.com/watch?v=D2_r4q2imnQ"); //troll them
     }
 })
+
+async function get_another_token(req, res) {
+    //uses refresh token to set new access token
+    const refresh = req.cookies.refresh;
+
+    const data = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            "Authorization": "Basic " + (new Buffer.from(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET).toString("base64")) //converting to base64
+        },
+        body: new URLSearchParams({ //urlSearchParams encodes in content-type
+            grant_type: "refresh_token",
+            refresh_token: refresh
+        })
+    })
+    const refresh_data = await data.json();
+    if (refresh_data.error != undefined) {
+        //refresh token invalid
+        res.clearCookie("refresh");
+    } else {
+        const token = refresh_data["access_token"];
+        const expires_in = refresh_data["expires_in"];
+    
+        //setting new token
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,
+            maxAge: expires_in*1000 // 1 hour typically (1k for mili)
+        });
+    }
+    //refresh page
+    res.redirect("/");
+}
 
 async function get_song_data(req, res) {
     //returns song data by calling spotify api
@@ -119,7 +170,10 @@ async function get_song_data(req, res) {
         if (song_data_json["item"] != undefined) {
             song_name = song_data_json["item"]["name"];
             song_artist = song_data_json["item"]["artists"][0]["name"];
-            song_image = song_data_json["item"]["album"]["images"][0]["url"];
+            if (song_data_json["item"]["album"]["images"].length > 0) {
+                //local files can have no photo
+                song_image = song_data_json["item"]["album"]["images"][0]["url"];
+            }
     
             console.log(song_name + " by, " + song_artist);
         
@@ -140,7 +194,7 @@ async function genius_search_result(req, res, song_name, song_artist, song_image
 
     let genius_response = await fetch("https://api.genius.com/search?q=" + song_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
     let genius_json = await genius_response.json();
-    let genius_url;
+    let genius_url = undefined;
 
     //getting best search result
     if (genius_json["response"]["hits"].length == 0) {
@@ -167,28 +221,34 @@ async function store_song_data(req, res) {
         res.cookie("image", data["image"])
         res.cookie("url", data["url"]);
     } else {
-        res.cookie("title", undefined);
+        console.log("FAILED TO STORE SONG DATA");
     }
 }
 
+
+//our api for front end
 app.get("/api/lyrics", async (req, res) => {
     //scrapes the lyrics off of genius url in cookies
-    let url = decodeURIComponent(req.cookies.url);
-    console.log(url);
+    let url = req.cookies.url;
 
-    let genius_site = await fetch(url);
-    let genius_html = await genius_site.text();
-    const dom = new JSDOM(genius_html);
-    const divs = dom.window.document.querySelectorAll("div");
-    let lyrics = ""
-    divs.forEach(e => {
-        if (e.dataset.lyricsContainer) {
-            e.innerHTML = e.innerHTML.replace(/<br\s*\/?>/gi, '\n'); //replacing br with \n
-            lyrics += e.textContent + "\n";
-        }
-    });
+    if (url != "undefined") {
+        let genius_site = await fetch(url);
+        let genius_html = await genius_site.text();
+        const dom = new JSDOM(genius_html);
+        const divs = dom.window.document.querySelectorAll("div");
+        let lyrics = ""
+        divs.forEach(e => {
+            if (e.dataset.lyricsContainer) {
+                e.innerHTML = e.innerHTML.replace(/<br\s*\/?>/gi, '\n'); //replacing br with \n
+                lyrics += e.textContent + "\n";
+            }
+        });
+    
+        res.json({"lyrics": lyrics});
+    } else {
+        res.json({"lyrics": "Cannot Find Lyrics"});
+    }
 
-    res.json({"lyrics": lyrics});
 })
 
 app.post("/api/analysis", async (req, res) => {
@@ -220,7 +280,7 @@ app.post("/api/summary", async (req, res) => {
 
     const result = await model.generateContentStream(prompt);
     for await (const chunk of result.stream) {
-        if (chunk.candidates[0].finishReason == "OTHER") {
+        if ((chunk.promptFeedback != undefined && chunk.promptFeedback.blockReason == "OTHER") || chunk.candidates[0].finishReason == "OTHER") {
             res.write("\n### ERROR, cannot analyze specific slurs.");
             break;
         } else {
@@ -237,4 +297,4 @@ app.post("/api/format", async (req, res) => {
     res.json({"formatted": md.render(ai_text)});
 })
 
-app.listen(3000);
+app.listen(3000, () => {console.log("SERVER STARTED");});

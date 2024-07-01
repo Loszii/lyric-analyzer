@@ -29,7 +29,10 @@ function set_thumbnail() {
     }
 
     if (image != undefined && title != undefined && artist != undefined) {
-        const decoded_image = decodeURIComponent(image);
+        let decoded_image = decodeURIComponent(image);
+        if (decoded_image == "undefined") {
+            decoded_image = "res/black.jpg";
+        }
         const decoded_title = decodeURIComponent(title);
         const decoded_artist = decodeURIComponent(artist);
         document.getElementById("thumbnail").innerHTML = `<img src=${decoded_image}><h1>${decoded_title}</h1><h1>${decoded_artist}</h1>`
