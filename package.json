@@ -15,6 +15,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsdom": "^24.1.0",
-    "markdown-it": "^14.1.0"
+    "markdown-it": "^14.1.0",
+    "string-similarity": "^4.0.4"
   }
 }

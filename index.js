@@ -5,6 +5,7 @@ const querystring = require("querystring");
 const { JSDOM } = require("jsdom");
 const { HarmBlockThreshold, HarmCategory, GoogleGenerativeAI } = require("@google/generative-ai");
 const markdownIt = require("markdown-it");
+const stringSimilarity = require("string-similarity");
 
 //setting up google ai
 const safety_settings = [
@@ -178,7 +179,7 @@ async function get_song_data(req, res) {
             console.log(song_name + " by, " + song_artist);
         
             
-            return genius_search_result(req, res, song_name, song_artist, song_image);
+            return genius_search_result(song_name, song_artist, song_image);
         } else {
             console.log("CANNOT GET ITEM")
             return false;
@@ -189,24 +190,50 @@ async function get_song_data(req, res) {
     }
 }
 
-async function genius_search_result(req, res, song_name, song_artist, song_image) {
+async function genius_search_result(song_name, song_artist, song_image) {
     //uses genius api to search for the best fitting song and add its url to object to be returned
 
-    let genius_response = await fetch("https://api.genius.com/search?q=" + song_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
+    const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
+    const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
+    let formatted_name = song_name.replace(regex1, "").replace(regex2, "");
+
+    let genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
     let genius_json = await genius_response.json();
+
+    let hits = genius_json["response"]["hits"];
     let genius_url = undefined;
 
-    //getting best search result
-    if (genius_json["response"]["hits"].length == 0) {
-        genius_response = await fetch("https://api.genius.com/search?q=" + song_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
-        genius_json = await genius_response.json();
-    }
+    genius_url = get_best_hit(hits, formatted_name, song_artist);
 
-    if (genius_json["response"]["hits"].length != 0) {
-        genius_url = genius_json["response"]["hits"][0]["result"]["url"];
+    //if still undefined remove artist and try again with just title
+    if (genius_url == undefined) {
+        genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
+        genius_json = await genius_response.json();
+        hits = genius_json["response"]["hits"];
+
+        genius_url = get_best_hit(hits, formatted_name, song_artist);
     }
 
     return {"title": song_name, "artist": song_artist, "image": song_image, "url": genius_url};
+}
+
+function get_best_hit(hits, formatted_name, song_artist) {
+    //takes in a list of hits from the genius api, uses a string similarity checker to select the best hit possible
+    let genius_url = undefined;
+
+    if (hits.length != 0) {
+        const correct_full_title = formatted_name + " by " + song_artist;
+        let best_match = 0.65; //needs atleast 65% similarity
+        for (let i=0; i < hits.length; i++) {
+            let cur_name = hits[i]["result"]["full_title"];
+            let cur_match = stringSimilarity.compareTwoStrings(correct_full_title, cur_name);
+            if (cur_match > best_match) {
+                best_match = cur_match;
+                genius_url = hits[i]["result"]["url"];
+            }
+        }
+    }
+    return genius_url;
 }
 
 async function store_song_data(req, res) {
@@ -231,7 +258,7 @@ app.get("/api/lyrics", async (req, res) => {
     //scrapes the lyrics off of genius url in cookies
     let url = req.cookies.url;
 
-    if (url != "undefined") {
+    if (url != undefined && url != "undefined") { //string for cookies
         let genius_site = await fetch(url);
         let genius_html = await genius_site.text();
         const dom = new JSDOM(genius_html);
@@ -256,17 +283,21 @@ app.post("/api/analysis", async (req, res) => {
     let title = req.cookies.title;
     let artist = req.cookies.artist;
 
-    const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artist}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
-    const lyrics = req.body.lyrics;
-    const prompt = to_prepend + lyrics;
-    const result = await model.generateContentStream(prompt);
-    for await (const chunk of result.stream) {
-        if (chunk.candidates[0].finishReason == "OTHER") {
-            res.write("\n### ERROR, cannot analyze specific slurs.");
-            break;
-        } else {
-            res.write(chunk.text());
+    if (title != undefined) {
+        const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artist}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
+        const lyrics = req.body.lyrics;
+        const prompt = to_prepend + lyrics;
+        const result = await model.generateContentStream(prompt);
+        for await (const chunk of result.stream) {
+            if (chunk.candidates[0].finishReason == "OTHER") {
+                res.write("\n### ERROR, cannot analyze specific slurs.");
+                break;
+            } else {
+                res.write(chunk.text());
+            }
         }
+    } else {
+        res.write("Please start a Spotify session.");
     }
     res.end();
 })
@@ -275,20 +306,29 @@ app.post("/api/summary", async (req, res) => {
     //generates a summary of the current song using all lyrics
     let title = req.cookies.title;
     let artist = req.cookies.artist;
-    const lyrics = req.body.lyrics;
-    const prompt = `Write a summary about the song ${title}, by ${artist}. Here is a copy of the lyrics, ${lyrics}.`;
 
-    const result = await model.generateContentStream(prompt);
-    for await (const chunk of result.stream) {
-        if ((chunk.promptFeedback != undefined && chunk.promptFeedback.blockReason == "OTHER") || chunk.candidates[0].finishReason == "OTHER") {
-            res.write("\n### ERROR, cannot analyze specific slurs.");
-            break;
+    if (title != undefined) {
+        const lyrics = req.body.lyrics;
+        let prompt;
+        if (lyrics == "Cannot Find Lyrics") {
+            prompt = `Write a summary about the song ${title}, by ${artist}.`;
         } else {
-            res.write(chunk.text());
+            prompt = `Write a summary about the song ${title}, by ${artist}. Here is a copy of the lyrics, ${lyrics}.`;
         }
+    
+        const result = await model.generateContentStream(prompt);
+        for await (const chunk of result.stream) {
+            if ((chunk.promptFeedback != undefined && chunk.promptFeedback.blockReason == "OTHER") || chunk.candidates[0].finishReason == "OTHER") {
+                res.write("\n### ERROR, cannot analyze specific slurs.");
+                break;
+            } else {
+                res.write(chunk.text());
+            }
+        }
+    } else {
+        res.write("Please start a Spotify session.");
     }
     res.end();
-
 })
 
 app.post("/api/format", async (req, res) => {
