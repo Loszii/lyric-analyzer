@@ -160,7 +160,7 @@ async function get_another_token(req, res) {
 async function get_song_data(req, res) {
     //returns song data by calling spotify api
     let song_name;
-    let song_artist;
+    let song_artists = [];
     let song_image;
 
     const token = req.cookies.token;
@@ -170,16 +170,19 @@ async function get_song_data(req, res) {
         const song_data_json = await cur_data.json();
         if (song_data_json["item"] != undefined) {
             song_name = song_data_json["item"]["name"];
-            song_artist = song_data_json["item"]["artists"][0]["name"];
+
+            //append artists to song_artists
+            for (let i=0; i < song_data_json["item"]["artists"].length; i++) {
+                song_artists.push(song_data_json["item"]["artists"][i]["name"]);
+            }
+            song_artists = song_artists.join(", "); //make string of artists
+
             if (song_data_json["item"]["album"]["images"].length > 0) {
                 //local files can have no photo
                 song_image = song_data_json["item"]["album"]["images"][0]["url"];
-            }
-    
-            console.log(song_name + " by, " + song_artist);
-        
+            }        
             
-            return genius_search_result(song_name, song_artist, song_image);
+            return genius_search_result(song_name, song_artists, song_image);
         } else {
             console.log("CANNOT GET ITEM")
             return false;
@@ -190,20 +193,23 @@ async function get_song_data(req, res) {
     }
 }
 
-async function genius_search_result(song_name, song_artist, song_image) {
+async function genius_search_result(song_name, song_artists, song_image) {
     //uses genius api to search for the best fitting song and add its url to object to be returned
 
     const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
     const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
-    let formatted_name = song_name.replace(regex1, "").replace(regex2, "");
+    let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();
+    let correct_title = formatted_name + " by " + song_artists;
+    console.log(correct_title + "\n---------------\n");
 
-    let genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name + " " + song_artist, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
+    //search without the "by " for better results
+    let genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name + " " + song_artists, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
     let genius_json = await genius_response.json();
 
     let hits = genius_json["response"]["hits"];
     let genius_url = undefined;
 
-    genius_url = get_best_hit(hits, formatted_name, song_artist);
+    genius_url = get_best_hit(hits, correct_title, 0.70);
 
     //if still undefined remove artist and try again with just title
     if (genius_url == undefined) {
@@ -211,22 +217,24 @@ async function genius_search_result(song_name, song_artist, song_image) {
         genius_json = await genius_response.json();
         hits = genius_json["response"]["hits"];
 
-        genius_url = get_best_hit(hits, formatted_name, song_artist);
+        genius_url = get_best_hit(hits, correct_title, 0.40); //lowering threshold
     }
 
-    return {"title": song_name, "artist": song_artist, "image": song_image, "url": genius_url};
+    return {"title": song_name, "artists": song_artists, "image": song_image, "url": genius_url};
 }
 
-function get_best_hit(hits, formatted_name, song_artist) {
+function get_best_hit(hits, correct_title, threshold) {
     //takes in a list of hits from the genius api, uses a string similarity checker to select the best hit possible
     let genius_url = undefined;
 
     if (hits.length != 0) {
-        const correct_full_title = formatted_name + " by " + song_artist;
-        let best_match = 0.65; //needs atleast 65% similarity
+        let best_match = threshold; //needs atleast 70% similarity
         for (let i=0; i < hits.length; i++) {
             let cur_name = hits[i]["result"]["full_title"];
-            let cur_match = stringSimilarity.compareTwoStrings(correct_full_title, cur_name);
+            let cur_match = stringSimilarity.compareTwoStrings(correct_title.toLowerCase(), cur_name.toLowerCase());
+
+            console.log(cur_name + " | " + cur_match + "\n");
+
             if (cur_match > best_match) {
                 best_match = cur_match;
                 genius_url = hits[i]["result"]["url"];
@@ -244,7 +252,7 @@ async function store_song_data(req, res) {
     //set data in browsers cookies
     if (data) {
         res.cookie("title", data["title"]);
-        res.cookie("artist", data["artist"]);
+        res.cookie("artists", data["artists"]);
         res.cookie("image", data["image"])
         res.cookie("url", data["url"]);
     } else {
@@ -281,10 +289,10 @@ app.get("/api/lyrics", async (req, res) => {
 app.post("/api/analysis", async (req, res) => {
     //generates an analysis of the current selected lyrics
     let title = req.cookies.title;
-    let artist = req.cookies.artist;
+    let artists = req.cookies.artists;
 
     if (title != undefined) {
-        const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artist}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
+        const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artists}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
         const lyrics = req.body.lyrics;
         const prompt = to_prepend + lyrics;
         const result = await model.generateContentStream(prompt);
@@ -305,15 +313,15 @@ app.post("/api/analysis", async (req, res) => {
 app.post("/api/summary", async (req, res) => {
     //generates a summary of the current song using all lyrics
     let title = req.cookies.title;
-    let artist = req.cookies.artist;
+    let artists = req.cookies.artists;
 
     if (title != undefined) {
         const lyrics = req.body.lyrics;
         let prompt;
-        if (lyrics == "Cannot Find Lyrics") {
-            prompt = `Write a summary about the song ${title}, by ${artist}.`;
+        if (lyrics == "Cannot Find Lyrics" || lyrics == "") {
+            prompt = `Write a summary about the song ${title}, by ${artists}.`;
         } else {
-            prompt = `Write a summary about the song ${title}, by ${artist}. Here is a copy of the lyrics, ${lyrics}.`;
+            prompt = `Write a summary about the song ${title}, by ${artists}. Here is a copy of the lyrics, ${lyrics}.`;
         }
     
         const result = await model.generateContentStream(prompt);

@@ -18,6 +18,7 @@ body {
     height: 90vh;
     flex-basis: 30%;
     overflow-y: auto;
+    scrollbar-color: white black;
     direction: rtl;
     border-color: black;
     border-style: double;
@@ -55,6 +56,7 @@ body {
     max-height: 70vh;
     flex-basis: 30%;
     overflow-y: auto;
+    scrollbar-color: black white;
     padding: 1rem;
 
     margin-top: 2rem;
@@ -64,6 +66,8 @@ body {
 
     color: black;
     background-color: white;
+    border-color: black;
+    border-style: double;
     border-radius: 5px;
 
 }

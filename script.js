@@ -4,7 +4,7 @@ function set_thumbnail() {
     const parsed = cookies.split("; ");
     let image;
     let title;
-    let artist;
+    let artists;
 
     //get image url
     for (let i=0; i < parsed.length; i++) {
@@ -20,22 +20,22 @@ function set_thumbnail() {
             break;
         }
     }
-    //get artist
+    //get artists
     for (let i=0; i < parsed.length; i++) {
-        if (parsed[i].slice(0, 7) == "artist=") {
-            artist = parsed[i].slice(7);
+        if (parsed[i].slice(0, 8) == "artists=") {
+            artists = parsed[i].slice(8);
             break;
         }
     }
 
-    if (image != undefined && title != undefined && artist != undefined) {
+    if (image != undefined && title != undefined && artists != undefined) {
         let decoded_image = decodeURIComponent(image);
         if (decoded_image == "undefined") {
             decoded_image = "res/black.jpg";
         }
         const decoded_title = decodeURIComponent(title);
-        const decoded_artist = decodeURIComponent(artist);
-        document.getElementById("thumbnail").innerHTML = `<img src=${decoded_image}><h1>${decoded_title}</h1><h1>${decoded_artist}</h1>`
+        const decoded_artists = decodeURIComponent(artists);
+        document.getElementById("thumbnail").innerHTML = `<img src=${decoded_image}><h1>${decoded_title}</h1><h1>${decoded_artists}</h1>`
     }
 }
 
