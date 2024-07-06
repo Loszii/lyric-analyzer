@@ -57,7 +57,7 @@ app.get("/", async (req, res) => {
             ));
         } else {
             //can use refresh token
-            console.log("GOING TO USE ACCESS TOKEN");
+            console.log("GOING TO USE REFRESH TOKEN");
             get_another_token(req, res); //will get a new access token and bring us back here
         }
     } else {
@@ -73,10 +73,6 @@ app.get("/style.css", (req, res) => {
 
 app.get("/script.js", (req, res) => {
     res.sendFile(__dirname + "/script.js");
-})
-
-app.get("/res/black.jpg", (req, res) => {
-    res.sendFile(__dirname + "/res/black.jpg");
 })
 
 //handling get requests after user login
@@ -168,7 +164,8 @@ async function get_song_data(req, res) {
 
     if (cur_data.statusText != "No Content") {
         const song_data_json = await cur_data.json();
-        if (song_data_json["item"] != undefined) {
+
+        if (song_data_json["item"] != undefined && !song_data_json["item"]["is_local"]) { //must exist and be local
             song_name = song_data_json["item"]["name"];
 
             //append artists to song_artists

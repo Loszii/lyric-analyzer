@@ -2,16 +2,18 @@ body {
     background-image: linear-gradient(grey, black);
     background-attachment: fixed;
     font-family: "Inter Tight", sans-serif;
+    font-size: calc((1vw + 0.5vh + 0.75rem)*(1/2));
     margin: 0;
-    margin-top: 2rem;
     padding: 0;
+    transition: 0.25s ease-in-out;
 }
 
 #container {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-evenly;
-    gap: 1rem;
+    margin-top: 1em;
+    gap: 1em;
 }
 
 #lyrics-container {
@@ -26,7 +28,7 @@ body {
 }
 
 #lyrics {
-    padding-left: 1rem;
+    padding-left: 1em;
     line-height: 200%;
     color: white;
     direction: ltr;
@@ -37,8 +39,8 @@ body {
 }
 
 #analyze-button {
-    padding: 0.5rem;
-    font-size: 3rem;
+    padding: 0.25em;
+    font-size: 2.5em;
     display: block;
     margin: auto;
     background-color: grey;
@@ -46,8 +48,12 @@ body {
     border-radius: 5px;
 }
 
+#analyze-button:hover {
+    box-shadow: 0px 0px 10px black;
+}
+
 #guidance {
-    font-size: 1rem;
+    font-size: 0.75em;
     color: white;
     text-align: center;
 }
@@ -57,9 +63,9 @@ body {
     flex-basis: 30%;
     overflow-y: auto;
     scrollbar-color: black white;
-    padding: 1rem;
+    padding: 0.5em;
 
-    margin-top: 2rem;
+    margin-top: 1em;
     line-height: 200%;
     color: white;
     text-align: center;
@@ -74,6 +80,7 @@ body {
 
 #thumb-container {
     flex-basis: 30%;
+    padding-top: 3em;
 }
 
 #thumbnail img {
@@ -83,7 +90,32 @@ body {
 
 #thumbnail h1 {
     background-color: white;
-    font-size: 2rem;
+    font-size: 2em;
     text-align: center;
     border-radius: 5px;
+}
+
+@media screen and (max-width: 1000px) {
+    /*move song info down, only show lyrics and analysis*/
+    #thumb-container {
+        flex-basis: 50%;
+    }
+    #lyrics-container {
+        flex-basis: 45%;
+    }
+    #analysis-container {
+        flex-basis: 45%;
+    }
+}
+@media screen and (max-width: 500px) {
+    /*move song info down, only show lyrics and analysis*/
+    #thumb-container {
+        flex-basis: 80%;
+    }
+    #lyrics-container {
+        flex-basis: 80%;
+    }
+    #analysis-container {
+        flex-basis: 80%;
+    }
 }
