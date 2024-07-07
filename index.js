@@ -62,17 +62,21 @@ app.get("/", async (req, res) => {
         }
     } else {
         await store_song_data(req, res);
-        res.sendFile(__dirname + "/home.html");
+        res.sendFile(__dirname + "/front-end/home.html");
     }
 })
 
-//front end files
+//front end files for home.html
 app.get("/style.css", (req, res) => {
-    res.sendFile(__dirname + "/style.css");
+    res.sendFile(__dirname + "/front-end/style.css");
 })
 
 app.get("/script.js", (req, res) => {
-    res.sendFile(__dirname + "/script.js");
+    res.sendFile(__dirname + "/front-end/script.js");
+})
+
+app.get("/res/black.jpg", (req, res) => {
+    res.sendFile(__dirname + "/res/black.jpg");
 })
 
 //handling get requests after user login
@@ -82,40 +86,47 @@ app.get("/callback", async (req, res) => {
     const code = req.query.code || null;
 
     if (code) { //authorized
-        //get token
-        const data = await fetch("https://accounts.spotify.com/api/token", {
-            method: "POST",
-            headers: {
-                "content-type": "application/x-www-form-urlencoded",
-                "Authorization": "Basic " + (new Buffer.from(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET).toString("base64")) //converting to base64
-            },
-            body: new URLSearchParams({ //urlSearchParams encodes in content-type
-                grant_type: "authorization_code",
-                code: code, //code returned from login
-                redirect_uri: "http://localhost:3000/callback"
+        try {
+            //get token
+            const data = await fetch("https://accounts.spotify.com/api/token", {
+                method: "POST",
+                headers: {
+                    "content-type": "application/x-www-form-urlencoded",
+                    "Authorization": "Basic " + (new Buffer.from(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET).toString("base64")) //converting to base64
+                },
+                body: new URLSearchParams({ //urlSearchParams encodes in content-type
+                    grant_type: "authorization_code",
+                    code: code, //code returned from login
+                    redirect_uri: "http://localhost:3000/callback"
+                })
             })
-        })
-        let token_data = await data.json();
-        const token = token_data["access_token"];
-        const refresh = token_data["refresh_token"];
-        const expires_in = token_data["expires_in"];
-        
-        //cookies
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,
-            maxAge: expires_in*1000 // 1 hour typically (1k for mili)
-        });
-        res.cookie("refresh", refresh, {
-            httpOnly: true,
-            secure: true,
-        });
+            let token_data = await data.json();
+            const token = token_data["access_token"];
+            const refresh = token_data["refresh_token"];
+            const expires_in = token_data["expires_in"];
+            
+            //cookies
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: true,
+                maxAge: expires_in*1000 // 1 hour typically (1k for mili)
+            });
+            res.cookie("refresh", refresh, {
+                httpOnly: true,
+                secure: true,
+            });
 
-        //get song current info
-        res.redirect("/");
+            //get song current info
+            res.redirect("/");
+        } catch (err) {
+            console.log("Error in Spotify authorization:", err.message);
+            res.sendFile(__dirname + "/front-end/error.html");
+        }
     } else {
         //user hit cancel
-        res.redirect("https://www.youtube.com/watch?v=D2_r4q2imnQ"); //troll them
+        const error = req.query.error || "Unkown error";
+        console.log("Error in Spotify authorization:", error);
+        res.sendFile(__dirname + "/front-end/error.html");
     }
 })
 
@@ -155,87 +166,86 @@ async function get_another_token(req, res) {
 
 async function get_song_data(req, res) {
     //returns song data by calling spotify api
-    let song_name;
-    let song_artists = [];
-    let song_image;
-
-    const token = req.cookies.token;
-    const cur_data = await fetch("https://api.spotify.com/v1/me/player", {headers: {Authorization: `Bearer ${token}`}}); //using our access token
-
-    if (cur_data.statusText != "No Content") {
+    try {
+        let song_name;
+        let song_artists = [];
+        let song_image = undefined; //in case it is local and doesn't have one
+    
+        const token = req.cookies.token;
+        const cur_data = await fetch("https://api.spotify.com/v1/me/player", {headers: {Authorization: `Bearer ${token}`}}); //using our access token
+    
         const song_data_json = await cur_data.json();
-
-        if (song_data_json["item"] != undefined && !song_data_json["item"]["is_local"]) { //must exist and be local
-            song_name = song_data_json["item"]["name"];
-
-            //append artists to song_artists
-            for (let i=0; i < song_data_json["item"]["artists"].length; i++) {
-                song_artists.push(song_data_json["item"]["artists"][i]["name"]);
-            }
-            song_artists = song_artists.join(", "); //make string of artists
-
-            if (song_data_json["item"]["album"]["images"].length > 0) {
-                //local files can have no photo
-                song_image = song_data_json["item"]["album"]["images"][0]["url"];
-            }        
-            
-            return genius_search_result(song_name, song_artists, song_image);
-        } else {
-            console.log("CANNOT GET ITEM")
-            return false;
+        song_name = song_data_json["item"]["name"];
+    
+        //append artists to song_artists
+        for (let i=0; i < song_data_json["item"]["artists"].length; i++) {
+            song_artists.push(song_data_json["item"]["artists"][i]["name"]);
         }
-    } else {
-        console.log("NO ACTIVE SESSION")
+        song_artists = song_artists.join(", "); //make string of artists
+    
+        if (song_data_json["item"]["album"]["images"].length > 0) {
+            song_image = song_data_json["item"]["album"]["images"][0]["url"]; //0 is best quality version
+        }        
+        
+        return genius_search_result(song_name, song_artists, song_image);
+    } catch (err) {
+        console.log("Failed to get song data:", err.message);
         return false;
     }
 }
 
 async function genius_search_result(song_name, song_artists, song_image) {
     //uses genius api to search for the best fitting song and add its url to object to be returned
-
-    const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
-    const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
-    let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();
-    let correct_title = formatted_name + " by " + song_artists;
-    console.log(correct_title + "\n---------------\n");
-
-    //search without the "by " for better results
-    let genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name + " " + song_artists, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
-    let genius_json = await genius_response.json();
-
-    let hits = genius_json["response"]["hits"];
-    let genius_url = undefined;
-
-    genius_url = get_best_hit(hits, correct_title, 0.70);
-
-    //if still undefined remove artist and try again with just title
-    if (genius_url == undefined) {
-        genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
-        genius_json = await genius_response.json();
-        hits = genius_json["response"]["hits"];
-
-        genius_url = get_best_hit(hits, correct_title, 0.40); //lowering threshold
+    //if cannot find url, just returns an object with the given params and url: undefined
+    try {
+        const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
+        const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
+        let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();
+        let correct_title = formatted_name + " by " + song_artists;
+        console.log("Current song is:", correct_title);
+    
+        //search without the "by " for better results
+        let genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name + " " + song_artists, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
+        let genius_json = await genius_response.json();
+    
+        let hits = genius_json["response"]["hits"];
+        let genius_url = undefined;
+    
+        genius_url = get_best_hit(hits, correct_title, 0.70);
+    
+        //if still undefined remove artist and try again with just title
+        if (genius_url == undefined) {
+            genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
+            genius_json = await genius_response.json();
+            hits = genius_json["response"]["hits"];
+    
+            genius_url = get_best_hit(hits, correct_title, 0.40); //lowering threshold
+        }
+        
+        //may still be undefined but return anyway
+        return {"title": song_name, "artists": song_artists, "image": song_image, "url": genius_url};
+    } catch (err) {
+        console.log("Error in genius seach result:", err.message);
+        return {"title": song_name, "artists": song_artists, "image": song_image, "url": undefined}
     }
-
-    return {"title": song_name, "artists": song_artists, "image": song_image, "url": genius_url};
 }
 
 function get_best_hit(hits, correct_title, threshold) {
     //takes in a list of hits from the genius api, uses a string similarity checker to select the best hit possible
     let genius_url = undefined;
 
-    if (hits.length != 0) {
-        let best_match = threshold; //needs atleast 70% similarity
-        for (let i=0; i < hits.length; i++) {
+    let best_match = threshold; //needs atleast threshold% similarity
+    for (let i=0; i < hits.length; i++) {
+        try {
             let cur_name = hits[i]["result"]["full_title"];
             let cur_match = stringSimilarity.compareTwoStrings(correct_title.toLowerCase(), cur_name.toLowerCase());
-
-            console.log(cur_name + " | " + cur_match + "\n");
-
+    
             if (cur_match > best_match) {
                 best_match = cur_match;
                 genius_url = hits[i]["result"]["url"];
             }
+        } catch (err) {
+            console.log("Error in get best hit:", err.message);
         }
     }
     return genius_url;
@@ -244,7 +254,7 @@ function get_best_hit(hits, correct_title, threshold) {
 async function store_song_data(req, res) {
     //get song data and put in cookies
 
-    let data = await get_song_data(req, res);
+    let data = await get_song_data(req, res); //returns false if error
 
     //set data in browsers cookies
     if (data) {
@@ -263,7 +273,7 @@ app.get("/api/lyrics", async (req, res) => {
     //scrapes the lyrics off of genius url in cookies
     let url = req.cookies.url;
 
-    if (url != undefined && url != "undefined") { //string for cookies
+    try { //string for cookies
         let genius_site = await fetch(url);
         let genius_html = await genius_site.text();
         const dom = new JSDOM(genius_html);
@@ -275,9 +285,9 @@ app.get("/api/lyrics", async (req, res) => {
                 lyrics += e.textContent + "\n";
             }
         });
-    
         res.json({"lyrics": lyrics});
-    } else {
+    } catch (err) {
+        console.log("Error in fetching song lyrics:", err.message);
         res.json({"lyrics": "Cannot Find Lyrics"});
     }
 
@@ -289,17 +299,23 @@ app.post("/api/analysis", async (req, res) => {
     let artists = req.cookies.artists;
 
     if (title != undefined) {
-        const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artists}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
-        const lyrics = req.body.lyrics;
-        const prompt = to_prepend + lyrics;
-        const result = await model.generateContentStream(prompt);
-        for await (const chunk of result.stream) {
-            if (chunk.candidates[0].finishReason == "OTHER") {
-                res.write("\n### ERROR, cannot analyze specific slurs.");
-                break;
-            } else {
-                res.write(chunk.text());
+        try {
+            const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artists}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
+            const lyrics = req.body.lyrics;
+            const prompt = to_prepend + lyrics;
+            const result = await model.generateContentStream(prompt);
+            for await (const chunk of result.stream) {
+                if ((chunk.promptFeedback != undefined && chunk.promptFeedback.blockReason == "OTHER") || chunk.candidates[0].finishReason == "OTHER") {
+                    //slurs like the n word will lead to the AI finishing
+                    res.write("\n### ERROR, cannot analyze specific slurs.");
+                    break;
+                } else {
+                    res.write(chunk.text());
+                }
             }
+        } catch (err) {
+            console.log("Error in analysis:", err.message);
+            res.write("\n### ERROR");
         }
     } else {
         res.write("Please start a Spotify session.");
@@ -311,24 +327,25 @@ app.post("/api/summary", async (req, res) => {
     //generates a summary of the current song using all lyrics
     let title = req.cookies.title;
     let artists = req.cookies.artists;
-
-    if (title != undefined) {
-        const lyrics = req.body.lyrics;
-        let prompt;
-        if (lyrics == "Cannot Find Lyrics" || lyrics == "") {
-            prompt = `Write a summary about the song ${title}, by ${artists}.`;
-        } else {
-            prompt = `Write a summary about the song ${title}, by ${artists}. Here is a copy of the lyrics, ${lyrics}.`;
-        }
-    
-        const result = await model.generateContentStream(prompt);
-        for await (const chunk of result.stream) {
-            if ((chunk.promptFeedback != undefined && chunk.promptFeedback.blockReason == "OTHER") || chunk.candidates[0].finishReason == "OTHER") {
-                res.write("\n### ERROR, cannot analyze specific slurs.");
-                break;
-            } else {
-                res.write(chunk.text());
+    const lyrics = req.body.lyrics;
+    if (lyrics == "Cannot Find Lyrics" || lyrics == "") {
+        res.write("Without the lyrics I am unable to analyze the current song.");
+    } else if (title != undefined) {
+        try {
+            let prompt = `Write a summary about the song ${title}, by ${artists}. Here is a copy of the lyrics, ${lyrics}.`;
+        
+            const result = await model.generateContentStream(prompt);
+            for await (const chunk of result.stream) {
+                if ((chunk.promptFeedback != undefined && chunk.promptFeedback.blockReason == "OTHER") || chunk.candidates[0].finishReason == "OTHER") {
+                    res.write("\n### ERROR, cannot analyze specific slurs.");
+                    break;
+                } else {
+                    res.write(chunk.text());
+                }
             }
+        } catch (err) {
+            console.log("Error in summary:", err.message);
+            res.write("\n### ERROR");
         }
     } else {
         res.write("Please start a Spotify session.");
