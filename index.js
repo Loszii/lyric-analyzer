@@ -47,7 +47,7 @@ app.get("/", async (req, res) => {
         //redirect useres to login with spotify and authorize us to see their playback
         if (req.cookies.refresh == undefined) {
             //no refresh token, redirect to spotify site for auth
-            console.log("HAVING USER AUTHORIZE WITH SPOTIFY");
+            console.log("Having user authorize with Spotify");
             res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
                 response_type: "code",
                 client_id: process.env.CLIENT_ID,
@@ -57,7 +57,7 @@ app.get("/", async (req, res) => {
             ));
         } else {
             //can use refresh token
-            console.log("GOING TO USE REFRESH TOKEN");
+            console.log("Going to use refresh token");
             get_another_token(req, res); //will get a new access token and bring us back here
         }
     } else {
@@ -210,7 +210,7 @@ async function genius_search_result(song_name, song_artists, song_image) {
     
         let hits = genius_json["response"]["hits"];
         let genius_url = undefined;
-    
+        
         genius_url = get_best_hit(hits, correct_title, 0.70);
     
         //if still undefined remove artist and try again with just title
@@ -239,7 +239,9 @@ function get_best_hit(hits, correct_title, threshold) {
         try {
             let cur_name = hits[i]["result"]["full_title"];
             let cur_match = stringSimilarity.compareTwoStrings(correct_title.toLowerCase(), cur_name.toLowerCase());
-    
+            
+            console.log("LOOKING FOR", correct_title, "CURRENT SEARCH:", cur_name, "CURRENT MATCH:", cur_match);
+
             if (cur_match > best_match) {
                 best_match = cur_match;
                 genius_url = hits[i]["result"]["url"];
