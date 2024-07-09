@@ -68,7 +68,23 @@ app.get("/", async (req, res) => {
             get_another_token(req, res); //will get a new access token and bring us back here
         }
     } else {
-        await store_song_data(req, res);
+        //get the song data
+        let data = await get_song_data(req, res); //returns false if error
+        
+        if (data) {
+            const {title, artists, image} = data;
+            const url = await genius_search_result(title, artists); //get the genius url
+
+            //set data in browsers cookies
+            res.cookie("title", title);
+            res.cookie("artists", artists);
+            res.cookie("image", image)
+            res.cookie("url", url);
+        } else {
+            console.log("FAILED TO STORE SONG DATA");
+        }
+        
+        //send home with the correct cookies in browser, here the html will make requests for lyrics/analysis
         res.sendFile(__dirname + "/public/home.html");
     }
 })
@@ -181,14 +197,14 @@ async function get_song_data(req, res) {
             song_image = song_data_json["item"]["album"]["images"][0]["url"]; //0 is best quality version
         }        
         
-        return genius_search_result(song_name, song_artists, song_image);
+        return {"title": song_name, "artists": song_artists, "image": song_image};
     } catch (err) {
         console.log("Failed to get song data:", err.message);
         return false;
     }
 }
 
-async function genius_search_result(song_name, song_artists, song_image) {
+async function genius_search_result(song_name, song_artists) {
     //uses genius api to search for the best fitting song and add its url to object to be returned
     //if cannot find url, just returns an object with the given params and url: undefined
     try {
@@ -199,7 +215,8 @@ async function genius_search_result(song_name, song_artists, song_image) {
         console.log("Current song is:", correct_title);
     
         //search without the "by " for better results
-        let genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name + " " + song_artists, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
+        let encoded_name = encodeURIComponent(formatted_name + " " + song_artists); //to convert special characters that could mess up call
+        let genius_response = await fetch("https://api.genius.com/search?q=" + encoded_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
         let genius_json = await genius_response.json();
     
         let hits = genius_json["response"]["hits"];
@@ -209,7 +226,8 @@ async function genius_search_result(song_name, song_artists, song_image) {
     
         //if still undefined remove artist and try again with just title
         if (genius_url == undefined) {
-            genius_response = await fetch("https://api.genius.com/search?q=" + formatted_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
+            encoded_name = encodeURIComponent(formatted_name)
+            genius_response = await fetch("https://api.genius.com/search?q=" + encoded_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
             genius_json = await genius_response.json();
             hits = genius_json["response"]["hits"];
     
@@ -217,10 +235,10 @@ async function genius_search_result(song_name, song_artists, song_image) {
         }
         
         //may still be undefined but return anyway
-        return {"title": song_name, "artists": song_artists, "image": song_image, "url": genius_url};
+        return genius_url;
     } catch (err) {
         console.log("Error in genius seach result:", err.message);
-        return {"title": song_name, "artists": song_artists, "image": song_image, "url": undefined}
+        return undefined;
     }
 }
 
@@ -246,23 +264,6 @@ function get_best_hit(hits, correct_title, threshold) {
     }
     return genius_url;
 }
-
-async function store_song_data(req, res) {
-    //get song data and put in cookies
-
-    let data = await get_song_data(req, res); //returns false if error
-
-    //set data in browsers cookies
-    if (data) {
-        res.cookie("title", data["title"]);
-        res.cookie("artists", data["artists"]);
-        res.cookie("image", data["image"])
-        res.cookie("url", data["url"]);
-    } else {
-        console.log("FAILED TO STORE SONG DATA");
-    }
-}
-
 
 //our api for front end
 app.get("/api/lyrics", async (req, res) => {
