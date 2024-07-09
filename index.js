@@ -1,11 +1,12 @@
 require("dotenv").config();
-const cookieParser = require('cookie-parser');
+const cookieParser = require("cookie-parser");
 const express = require("express");
 const querystring = require("querystring");
 const { JSDOM } = require("jsdom");
 const { HarmBlockThreshold, HarmCategory, GoogleGenerativeAI } = require("@google/generative-ai");
 const markdownIt = require("markdown-it");
 const stringSimilarity = require("string-similarity");
+const favicon = require("serve-favicon");
 
 //setting up google ai
 const safety_settings = [
@@ -38,6 +39,12 @@ const app = express();
 app.use(express.json()); //for parsing body
 app.use(cookieParser()); //for cookies
 
+//static files
+app.use("/res", express.static(__dirname + "/res"));
+app.use("/assets", express.static(__dirname + "/assets"));
+//icon
+app.use(favicon(__dirname + "/res/favicon.png"));
+
 //main page
 app.get("/", async (req, res) => {
     //main page, redirects user to authorization or sends them the home.html
@@ -62,21 +69,8 @@ app.get("/", async (req, res) => {
         }
     } else {
         await store_song_data(req, res);
-        res.sendFile(__dirname + "/front-end/home.html");
+        res.sendFile(__dirname + "/public/home.html");
     }
-})
-
-//front end files for home.html
-app.get("/style.css", (req, res) => {
-    res.sendFile(__dirname + "/front-end/style.css");
-})
-
-app.get("/script.js", (req, res) => {
-    res.sendFile(__dirname + "/front-end/script.js");
-})
-
-app.get("/res/black.jpg", (req, res) => {
-    res.sendFile(__dirname + "/res/black.jpg");
 })
 
 //handling get requests after user login
@@ -120,13 +114,13 @@ app.get("/callback", async (req, res) => {
             res.redirect("/");
         } catch (err) {
             console.log("Error in Spotify authorization:", err.message);
-            res.sendFile(__dirname + "/front-end/error.html");
+            res.sendFile(__dirname + "/public/error.html");
         }
     } else {
         //user hit cancel
         const error = req.query.error || "Unkown error";
         console.log("Error in Spotify authorization:", error);
-        res.sendFile(__dirname + "/front-end/error.html");
+        res.sendFile(__dirname + "/public/error.html");
     }
 })
 

@@ -31,7 +31,7 @@ function set_thumbnail() {
     if (image != undefined && title != undefined && artists != undefined) {
         let decoded_image = decodeURIComponent(image);
         if (decoded_image == "undefined") {
-            decoded_image = "res/black.jpg";
+            decoded_image = "/res/black.jpg";
         }
         const decoded_title = decodeURIComponent(title);
         const decoded_artists = decodeURIComponent(artists);
