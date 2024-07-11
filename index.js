@@ -128,6 +128,7 @@ app.get("/callback", async (req, res) => {
             const expires_in = token_data["expires_in"];
             
             //cookies
+            console.log("Settings user token:", token);
             res.cookie("token", token, {
                 httpOnly: true,
                 secure: true,
@@ -192,11 +193,12 @@ async function get_song_data(req, res) {
         let song_name;
         let song_artists = [];
         let song_image = undefined; //in case it is local and doesn't have one
-    
         const token = req.cookies.token;
+        console.log("Using token:", token);
         const cur_data = await fetch("https://api.spotify.com/v1/me/player", {headers: {Authorization: `Bearer ${token}`}}); //using our access token
-    
+        console.log("Get song response:", cur_data);
         const song_data_json = await cur_data.json();
+        console.log("Get song response json:", song_data_json);
         song_name = song_data_json["item"]["name"];
     
         //append artists to song_artists
