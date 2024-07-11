@@ -33,6 +33,13 @@ const model = genAI.getGenerativeModel({model: "gemini-1.5-flash", safetySetting
 
 const md = markdownIt(); //for markdown to html
 
+const local = process.env.LOCAL; //TRUE or FALSE
+let spotify_redirect_uri;
+if (local == "TRUE") {
+    spotify_redirect_uri = "http://localhost:3000/callback";
+} else {
+    spotify_redirect_uri = "https://lyric-analyzer.vercel.app";
+}
 
 //setting up app
 const app = express();
@@ -58,7 +65,7 @@ app.get("/", async (req, res) => {
             res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
                 response_type: "code",
                 client_id: process.env.CLIENT_ID,
-                redirect_uri: "http://localhost:3000/callback",
+                redirect_uri: spotify_redirect_uri,
                 scope: "user-read-playback-state"
             }
             ));
@@ -107,7 +114,7 @@ app.get("/callback", async (req, res) => {
                 body: new URLSearchParams({ //urlSearchParams encodes in content-type
                     grant_type: "authorization_code",
                     code: code, //code returned from login
-                    redirect_uri: "http://localhost:3000/callback"
+                    redirect_uri: spotify_redirect_uri
                 })
             })
             let token_data = await data.json();
