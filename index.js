@@ -195,7 +195,7 @@ async function get_song_data(req, res) {
         let song_image = undefined; //in case it is local and doesn't have one
         const token = req.cookies.token;
         console.log("Using token:", token);
-        const cur_data = await fetch("https://api.spotify.com/v1/me/player", {headers: {Authorization: `Bearer ${token}`}}); //using our access token
+        const cur_data = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {headers: {Authorization: `Bearer ${token}`}}); //using our access token
         console.log("Get song response:", cur_data);
         const song_data_json = await cur_data.json();
         console.log("Get song response json:", song_data_json);
@@ -234,20 +234,8 @@ async function genius_search_result(song_name, song_artists) {
         let genius_json = await genius_response.json();
     
         let hits = genius_json["response"]["hits"];
-        let genius_url = undefined;
-        
-        genius_url = get_best_hit(hits, correct_title, 0.70);
-    
-        //if still undefined remove artist and try again with just title
-        if (genius_url == undefined) {
-            encoded_name = encodeURIComponent(formatted_name)
-            genius_response = await fetch("https://api.genius.com/search?q=" + encoded_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
-            genius_json = await genius_response.json();
-            hits = genius_json["response"]["hits"];
-    
-            genius_url = get_best_hit(hits, correct_title, 0.40); //lowering threshold
-        }
-        
+        let genius_url = get_best_hit(hits, correct_title, 0.70); //last param is threshold
+
         //may still be undefined but return anyway
         return genius_url;
     } catch (err) {
@@ -312,24 +300,22 @@ app.post("/api/analysis", async (req, res) => {
             const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artists}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
             const lyrics = req.body.lyrics;
             const prompt = to_prepend + lyrics;
-            const result = await model.generateContentStream(prompt);
-            for await (const chunk of result.stream) {
-                if ((chunk.promptFeedback != undefined && chunk.promptFeedback.blockReason == "OTHER") || chunk.candidates[0].finishReason == "OTHER") {
-                    //slurs like the n word will lead to the AI finishing
-                    res.write("\n### ERROR, cannot analyze specific slurs.");
-                    break;
-                } else {
-                    res.write(chunk.text());
-                }
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+
+            if ((response["promptFeedback"] != undefined && response["promptFeedback"]["blockReason"] == "OTHER") || response["candidates"][0]["finishReason"] == "OTHER") {
+                res.json({"analysis": "Cannot analyze specific slurs."});
+            } else {
+                const text = md.render(response.text());
+                res.json({"analysis": text});
             }
         } catch (err) {
             console.log("Error in analysis:", err.message);
-            res.write("\n### ERROR");
+            res.json({"analysis": "ERROR"});
         }
     } else {
-        res.write("Please start a Spotify session.");
+        res.json({"analysis": "Please start a Spotify session."});
     }
-    res.end();
 })
 
 app.post("/api/summary", async (req, res) => {
@@ -338,35 +324,29 @@ app.post("/api/summary", async (req, res) => {
     let artists = req.cookies.artists;
     const lyrics = req.body.lyrics;
     if (lyrics == "Cannot Find Lyrics" || lyrics == "") {
-        res.write("Without the lyrics I am unable to analyze the current song.");
+        res.json({"summary": "Without the lyrics I am unable to analyze the current song."});
     } else if (title != undefined) {
         try {
             let prompt = `Write a summary about the song ${title}, by ${artists}. Here is a copy of the lyrics, ${lyrics}.`;
-        
-            const result = await model.generateContentStream(prompt);
-            for await (const chunk of result.stream) {
-                if ((chunk.promptFeedback != undefined && chunk.promptFeedback.blockReason == "OTHER") || chunk.candidates[0].finishReason == "OTHER") {
-                    res.write("\n### ERROR, cannot analyze specific slurs.");
-                    break;
-                } else {
-                    res.write(chunk.text());
-                }
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            
+            if ((response["promptFeedback"] != undefined && response["promptFeedback"]["blockReason"] == "OTHER") || response["candidates"][0]["finishReason"] == "OTHER") {
+                res.json({"summary": "Cannot analyze specific slurs."});
+            } else {
+                const text = md.render(response.text());
+                res.json({"summary": text});
             }
         } catch (err) {
             console.log("Error in summary:", err.message);
-            res.write("\n### ERROR");
+            res.json({"summary": "ERROR"});
         }
     } else {
-        res.write("Please start a Spotify session.");
+        res.json({"summary": "Please start a Spotify session."});
     }
     res.end();
 })
 
-app.post("/api/format", async (req, res) => {
-    //formats the ai response using markdown
-    const ai_text = req.body.ai_text;
-    res.json({"formatted": md.render(ai_text)});
-})
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {console.log("SERVER STARTED ON PORT", port);});
