@@ -4,7 +4,7 @@
   "description": "An application to get lyrics via currently playing Spotify song and analyze them using AI.",
   "main": "index.js",
   "engines": {
-    "node": "14.x"
+    "node": "20.x"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
