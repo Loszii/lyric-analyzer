@@ -43,6 +43,11 @@ if (local == "TRUE") {
 
 //setting up app
 const app = express();
+//middleware
+app.use((req, res, next) => { //disable cache
+    res.set("Cache-Control", "no-store");
+    next();
+});
 app.use(express.json()); //for parsing body
 app.use(cookieParser()); //for cookies
 
@@ -258,8 +263,6 @@ function get_best_hit(hits, correct_title, threshold) {
         try {
             let cur_name = hits[i]["result"]["full_title"];
             let cur_match = stringSimilarity.compareTwoStrings(correct_title.toLowerCase(), cur_name.toLowerCase());
-            
-            console.log("LOOKING FOR", correct_title, "CURRENT SEARCH:", cur_name, "CURRENT MATCH:", cur_match);
 
             if (cur_match > best_match) {
                 best_match = cur_match;
