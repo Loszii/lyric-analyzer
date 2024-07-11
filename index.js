@@ -123,9 +123,10 @@ app.get("/callback", async (req, res) => {
             const expires_in = token_data["expires_in"];
             
             //cookies
+            console.log(token); //debug for vercel
             res.cookie("token", token, {
-                httpOnly: true,
-                secure: true,
+                //httpOnly: true,
+                //secure: true,
                 maxAge: expires_in*1000 // 1 hour typically (1k for mili)
             });
             res.cookie("refresh", refresh, {
