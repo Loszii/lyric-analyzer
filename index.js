@@ -85,7 +85,7 @@ app.get("/", async (req, res) => {
         }
         
         //send home with the correct cookies in browser, here the html will make requests for lyrics/analysis
-        res.sendFile(__dirname + "/public/home.html");
+        res.sendFile(__dirname + "/pages/home.html");
     }
 })
 
@@ -130,13 +130,13 @@ app.get("/callback", async (req, res) => {
             res.redirect("/");
         } catch (err) {
             console.log("Error in Spotify authorization:", err.message);
-            res.sendFile(__dirname + "/public/error.html");
+            res.sendFile(__dirname + "/pages/error.html");
         }
     } else {
         //user hit cancel
         const error = req.query.error || "Unkown error";
         console.log("Error in Spotify authorization:", error);
-        res.sendFile(__dirname + "/public/error.html");
+        res.sendFile(__dirname + "/pages/error.html");
     }
 })
 
@@ -356,4 +356,5 @@ app.post("/api/format", async (req, res) => {
     res.json({"formatted": md.render(ai_text)});
 })
 
-app.listen(3000, () => {console.log("SERVER STARTED");});
+const port = process.env.PORT || 3000;
+app.listen(port, () => {console.log("SERVER STARTED ON PORT", port);});
