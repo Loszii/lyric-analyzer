@@ -38,7 +38,7 @@ let spotify_redirect_uri;
 if (local == "TRUE") {
     spotify_redirect_uri = "http://localhost:3000/callback";
 } else {
-    spotify_redirect_uri = "https://lyric-analyzer.vercel.app";
+    spotify_redirect_uri = "https://lyric-analyzer.vercel.app/callback";
 }
 
 //setting up app
@@ -123,10 +123,9 @@ app.get("/callback", async (req, res) => {
             const expires_in = token_data["expires_in"];
             
             //cookies
-            console.log(token); //debug for vercel
             res.cookie("token", token, {
-                //httpOnly: true,
-                //secure: true,
+                httpOnly: true,
+                secure: true,
                 maxAge: expires_in*1000 // 1 hour typically (1k for mili)
             });
             res.cookie("refresh", refresh, {
