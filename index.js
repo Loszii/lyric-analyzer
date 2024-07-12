@@ -71,7 +71,7 @@ app.get("/", async (req, res) => {
                 response_type: "code",
                 client_id: process.env.CLIENT_ID,
                 redirect_uri: spotify_redirect_uri,
-                scope: "user-read-playback-state user-read-currently-playing"
+                scope: "user-read-currently-playing"
             }
             ));
         } else {
