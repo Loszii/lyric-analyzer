@@ -4,15 +4,20 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Lyrics Analyzer</title>
-        <link rel="stylesheet" href="/assets/style.css">
+        <link rel="stylesheet" href="assets/style.css">
+        <link rel="stylesheet" href="assets/analysis.css">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     </header>
     <body>
         <div id="container">
-            <div id="lyrics-container">
-                <div id="lyrics">LOADING...</div>
+            <div id="left-side">
+                <a id="back" href="/">&#8592;</a>
+                <h1 id="l-header">Lyrics</h1>
+                <div id="lyrics-container">
+                    <div id="lyrics">LOADING...</div>
+                </div>
             </div>
             <div id="analysis-container">
                 <button id="analyze-button">Analyze</button>
@@ -23,6 +28,6 @@
                 <div id="thumbnail"></div>
             </div>
         </div>
-        <script src="/assets/script.js"></script>
+        <script src="assets/analysis.js"></script>
     </body>
 </html>

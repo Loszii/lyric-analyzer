@@ -1,0 +1,10 @@
+body {
+    background-image: linear-gradient(rgb(50,50,50), black);
+    background-attachment: fixed;
+    font-family: "Inter Tight", sans-serif;
+    font-size: calc((1vw + 0.5vh + 0.75rem)*(1/2));
+    margin: 0;
+    padding: 0;
+    transition: 0.25s ease-in-out;
+    box-sizing: border-box;
+}

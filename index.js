@@ -7,6 +7,7 @@ const { HarmBlockThreshold, HarmCategory, GoogleGenerativeAI } = require("@googl
 const markdownIt = require("markdown-it");
 const stringSimilarity = require("string-similarity");
 const favicon = require("serve-favicon");
+const { dirname } = require("path");
 
 //setting up google ai
 const safety_settings = [
@@ -48,111 +49,162 @@ app.use((req, res, next) => { //disable cache
     res.set("Cache-Control", "no-store");
     next();
 });
-app.use(express.json()); //for parsing body
+app.use(express.text()); //for parsing body
 app.use(cookieParser()); //for cookies
 
 //static files
-app.use("/res", express.static(__dirname + "/res"));
-app.use("/assets", express.static(__dirname + "/assets"));
+app.use("/", express.static(__dirname + "/public"));
 //icon
-app.use(favicon(__dirname + "/res/favicon.png"));
+app.use(favicon(__dirname + "/public/res/favicon.png"));
 
 //main page
 app.get("/", async (req, res) => {
-    //main page, redirects user to authorization or sends them the home.html
-    const token = req.cookies.token;
+    //send user to landing html
+    res.sendFile(__dirname + "/public/landing.html");
+});
 
-    if (token == undefined) {
-        //redirect useres to login with spotify and authorize us to see their playback
-        if (req.cookies.refresh == undefined) {
-            //no refresh token, redirect to spotify site for auth
-            console.log("Having user authorize with Spotify");
-            res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
-                response_type: "code",
-                client_id: process.env.CLIENT_ID,
-                redirect_uri: spotify_redirect_uri,
-                scope: "user-read-currently-playing"
-            }
-            ));
-        } else {
-            //can use refresh token
-            console.log("Going to use refresh token");
-            get_another_token(req, res); //will get a new access token and bring us back here
-        }
+app.get("/api/url", async (req, res) => {
+    //gets genius url and image using title and artist
+    const title = req.query.title;
+    const artists = req.query.artists;
+    const {url, img} = await genius_search_result(title, artists)
+    if (url == undefined) {
+        res.json({"url": "null"});
     } else {
-        //get the song data
-        let data = await get_song_data(req, res); //returns false if error
-        
-        if (data) {
-            const {title, artists, image} = data;
-            const url = await genius_search_result(title, artists); //get the genius url
-
-            //set data in browsers cookies
-            res.cookie("title", title);
-            res.cookie("artists", artists);
-            res.cookie("image", image)
-            res.cookie("url", url);
-        } else {
-            console.log("FAILED TO STORE SONG DATA");
-        }
-        
-        //send home with the correct cookies in browser, here the html will make requests for lyrics/analysis
-        res.sendFile(__dirname + "/pages/home.html");
+        res.json({"url": url, "img": img});
     }
-})
+});
 
-//handling get requests after user login
-app.get("/callback", async (req, res) => {
+async function genius_search_result(song_name, song_artists) {
+    //uses genius api to search for the best fitting song and add its url to object to be returned
+    //if cannot find url, just returns an object with the given params and url: undefined
+    try {
+        /*
+        SPOTIFY FORMATTING
+        const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
+        const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
+        let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();*/
+        let correct_title = song_name + " by " + song_artists;
+        console.log("Current song is:", correct_title);
+    
+        //search without the "by " for better results
+        let encoded_name = encodeURIComponent(song_name + " " + song_artists); //to convert special characters that could mess up call
+        let genius_response = await fetch("https://api.genius.com/search?q=" + encoded_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
+        let genius_json = await genius_response.json();
+    
+        let hits = genius_json["response"]["hits"];
+        let genius_data = get_best_hit(hits, correct_title, 0.70); //last param is threshold
 
-    //get code from login
-    const code = req.query.code || null;
+        //may still be undefined but return anyway
+        return genius_data;
+    } catch (err) {
+        console.log("Error in genius seach result:", err.message);
+        return undefined;
+    }
+}
 
-    if (code) { //authorized
+function get_best_hit(hits, correct_title, threshold) {
+    //takes in a list of hits from the genius api, uses a string similarity checker to select the best hit possible
+    let genius_url = undefined;
+    let genius_img = undefined;
+
+    let best_match = threshold; //needs atleast threshold% similarity
+    for (let i=0; i < hits.length; i++) {
         try {
-            //get token
-            const data = await fetch("https://accounts.spotify.com/api/token", {
-                method: "POST",
-                headers: {
-                    "content-type": "application/x-www-form-urlencoded",
-                    "Authorization": "Basic " + (new Buffer.from(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET).toString("base64")) //converting to base64
-                },
-                body: new URLSearchParams({ //urlSearchParams encodes in content-type
-                    grant_type: "authorization_code",
-                    code: code, //code returned from login
-                    redirect_uri: spotify_redirect_uri
-                })
-            })
-            let token_data = await data.json();
-            const token = token_data["access_token"];
-            const refresh = token_data["refresh_token"];
-            const expires_in = token_data["expires_in"];
-            
-            //cookies
-            console.log("Settings user token:", token);
-            res.cookie("token", token, {
-                httpOnly: true,
-                secure: true,
-                maxAge: expires_in*1000 // 1 hour typically (1k for mili)
-            });
-            res.cookie("refresh", refresh, {
-                httpOnly: true,
-                secure: true,
-            });
+            let cur_name = hits[i]["result"]["full_title"];
+            let cur_match = stringSimilarity.compareTwoStrings(correct_title.toLowerCase(), cur_name.toLowerCase());
 
-            //get song current info
-            res.redirect("/");
+            if (cur_match > best_match) {
+                best_match = cur_match;
+                genius_url = hits[i]["result"]["url"];
+                genius_img = hits[i]["result"]["song_art_image_url"];
+            }
         } catch (err) {
-            console.log("Error in Spotify authorization:", err.message);
-            res.sendFile(__dirname + "/pages/error.html");
+            console.log("Error in get best hit:", err.message);
         }
-    } else {
-        //user hit cancel
-        const error = req.query.error || "Unkown error";
-        console.log("Error in Spotify authorization:", error);
-        res.sendFile(__dirname + "/pages/error.html");
     }
-})
+    return {"url": genius_url, "img": genius_img};
+}
 
+//our api for front end
+app.get("/api/lyrics", async (req, res) => {
+    //scrapes the lyrics off of genius url in cookies
+    let url = req.query.url;
+
+    try { //string for cookies
+        let genius_site = await fetch(url);
+        let genius_html = await genius_site.text();
+        const dom = new JSDOM(genius_html);
+        const divs = dom.window.document.querySelectorAll("div");
+        let lyrics = ""
+        divs.forEach(e => {
+            if (e.dataset.lyricsContainer) {
+                e.innerHTML = e.innerHTML.replace(/<br\s*\/?>/gi, '\n'); //replacing br with \n
+                lyrics += e.textContent + "\n";
+            }
+        });
+        res.send(lyrics);
+    } catch (err) {
+        console.log("Error in fetching song lyrics:", err.message);
+        res.send("null");
+    }
+
+});
+
+app.post("/api/analyze", async (req, res) => {
+    //generates an analysis of the current selected lyrics
+    let title = req.query.title;
+    let artists = req.query.artists;
+
+    try {
+        const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artists}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
+        const lyrics = req.body;
+        const prompt = to_prepend + lyrics;
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+
+        if ((response["promptFeedback"] != undefined && response["promptFeedback"]["blockReason"] == "OTHER") || response["candidates"][0]["finishReason"] == "OTHER") {
+            res.send("Cannot analyze specific slurs.");
+        } else {
+            const text = md.render(response.text());
+            res.send(text);
+        }
+    } catch (err) {
+        console.log("Error in analysis:", err.message);
+        res.send("ERROR");
+    }
+});
+
+app.post("/api/summary", async (req, res) => {
+    //generates a summary of the current song using all lyrics
+    let title = req.query.title;
+    let artists = req.query.artists;
+    const lyrics = req.body;
+    
+    if (lyrics == "") {
+        res.send("Without the lyrics I am unable to analyze the current song.");
+    } else {
+        try {
+            let prompt = `Write a summary about the song ${title}, by ${artists}. Here is a copy of the lyrics, ${lyrics}.`;
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            
+            if ((response["promptFeedback"] != undefined && response["promptFeedback"]["blockReason"] == "OTHER") || response["candidates"][0]["finishReason"] == "OTHER") {
+                res.send("Cannot analyze specific slurs.");
+            } else {
+                const text = md.render(response.text());
+                res.send(text);
+            }
+        } catch (err) {
+            console.log("Error in summary:", err.message);
+            res.send("ERROR");
+        }
+    }
+});
+
+
+
+//SPOTIFY STUFF BELOW
 async function get_another_token(req, res) {
     //uses refresh token to set new access token
     const refresh = req.cookies.refresh;
@@ -218,135 +270,98 @@ async function get_song_data(req, res) {
     }
 }
 
-async function genius_search_result(song_name, song_artists) {
-    //uses genius api to search for the best fitting song and add its url to object to be returned
-    //if cannot find url, just returns an object with the given params and url: undefined
-    try {
-        const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
-        const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
-        let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();
-        let correct_title = formatted_name + " by " + song_artists;
-        console.log("Current song is:", correct_title);
-    
-        //search without the "by " for better results
-        let encoded_name = encodeURIComponent(formatted_name + " " + song_artists); //to convert special characters that could mess up call
-        let genius_response = await fetch("https://api.genius.com/search?q=" + encoded_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
-        let genius_json = await genius_response.json();
-    
-        let hits = genius_json["response"]["hits"];
-        let genius_url = get_best_hit(hits, correct_title, 0.70); //last param is threshold
+//handling get requests after user login
+app.get("/callback", async (req, res) => {
 
-        //may still be undefined but return anyway
-        return genius_url;
-    } catch (err) {
-        console.log("Error in genius seach result:", err.message);
-        return undefined;
-    }
-}
+    //get code from login
+    const code = req.query.code || null;
 
-function get_best_hit(hits, correct_title, threshold) {
-    //takes in a list of hits from the genius api, uses a string similarity checker to select the best hit possible
-    let genius_url = undefined;
-
-    let best_match = threshold; //needs atleast threshold% similarity
-    for (let i=0; i < hits.length; i++) {
+    if (code) { //authorized
         try {
-            let cur_name = hits[i]["result"]["full_title"];
-            let cur_match = stringSimilarity.compareTwoStrings(correct_title.toLowerCase(), cur_name.toLowerCase());
-
-            if (cur_match > best_match) {
-                best_match = cur_match;
-                genius_url = hits[i]["result"]["url"];
-            }
-        } catch (err) {
-            console.log("Error in get best hit:", err.message);
-        }
-    }
-    return genius_url;
-}
-
-//our api for front end
-app.get("/api/lyrics", async (req, res) => {
-    //scrapes the lyrics off of genius url in cookies
-    let url = req.cookies.url;
-
-    try { //string for cookies
-        let genius_site = await fetch(url);
-        let genius_html = await genius_site.text();
-        const dom = new JSDOM(genius_html);
-        const divs = dom.window.document.querySelectorAll("div");
-        let lyrics = ""
-        divs.forEach(e => {
-            if (e.dataset.lyricsContainer) {
-                e.innerHTML = e.innerHTML.replace(/<br\s*\/?>/gi, '\n'); //replacing br with \n
-                lyrics += e.textContent + "\n";
-            }
-        });
-        res.json({"lyrics": lyrics});
-    } catch (err) {
-        console.log("Error in fetching song lyrics:", err.message);
-        res.json({"lyrics": "Cannot Find Lyrics"});
-    }
-
-})
-
-app.post("/api/analysis", async (req, res) => {
-    //generates an analysis of the current selected lyrics
-    let title = req.cookies.title;
-    let artists = req.cookies.artists;
-
-    if (title != undefined) {
-        try {
-            const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artists}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
-            const lyrics = req.body.lyrics;
-            const prompt = to_prepend + lyrics;
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-
-            if ((response["promptFeedback"] != undefined && response["promptFeedback"]["blockReason"] == "OTHER") || response["candidates"][0]["finishReason"] == "OTHER") {
-                res.json({"analysis": "Cannot analyze specific slurs."});
-            } else {
-                const text = md.render(response.text());
-                res.json({"analysis": text});
-            }
-        } catch (err) {
-            console.log("Error in analysis:", err.message);
-            res.json({"analysis": "ERROR"});
-        }
-    } else {
-        res.json({"analysis": "Please start a Spotify session."});
-    }
-})
-
-app.post("/api/summary", async (req, res) => {
-    //generates a summary of the current song using all lyrics
-    let title = req.cookies.title;
-    let artists = req.cookies.artists;
-    const lyrics = req.body.lyrics;
-    if (lyrics == "Cannot Find Lyrics" || lyrics == "") {
-        res.json({"summary": "Without the lyrics I am unable to analyze the current song."});
-    } else if (title != undefined) {
-        try {
-            let prompt = `Write a summary about the song ${title}, by ${artists}. Here is a copy of the lyrics, ${lyrics}.`;
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
+            //get token
+            const data = await fetch("https://accounts.spotify.com/api/token", {
+                method: "POST",
+                headers: {
+                    "content-type": "application/x-www-form-urlencoded",
+                    "Authorization": "Basic " + (new Buffer.from(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET).toString("base64")) //converting to base64
+                },
+                body: new URLSearchParams({ //urlSearchParams encodes in content-type
+                    grant_type: "authorization_code",
+                    code: code, //code returned from login
+                    redirect_uri: spotify_redirect_uri
+                })
+            })
+            let token_data = await data.json();
+            const token = token_data["access_token"];
+            const refresh = token_data["refresh_token"];
+            const expires_in = token_data["expires_in"];
             
-            if ((response["promptFeedback"] != undefined && response["promptFeedback"]["blockReason"] == "OTHER") || response["candidates"][0]["finishReason"] == "OTHER") {
-                res.json({"summary": "Cannot analyze specific slurs."});
-            } else {
-                const text = md.render(response.text());
-                res.json({"summary": text});
-            }
+            //cookies
+            console.log("Settings user token:", token);
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: true,
+                maxAge: expires_in*1000 // 1 hour typically (1k for mili)
+            });
+            res.cookie("refresh", refresh, {
+                httpOnly: true,
+                secure: true,
+            });
+
+            //get song current info
+            res.redirect("/");
         } catch (err) {
-            console.log("Error in summary:", err.message);
-            res.json({"summary": "ERROR"});
+            console.log("Error in Spotify authorization:", err.message);
+            res.sendFile(__dirname + "/public/error.html");
         }
     } else {
-        res.json({"summary": "Please start a Spotify session."});
+        //user hit cancel
+        const error = req.query.error || "Unkown error";
+        console.log("Error in Spotify authorization:", error);
+        res.sendFile(__dirname + "/public/error.html");
     }
-    res.end();
-})
+});
 
+
+//old code below to incorporate spotify eventually
+/*
+const token = req.cookies.token;
+
+if (token == undefined) {
+    //redirect useres to login with spotify and authorize us to see their playback
+    if (req.cookies.refresh == undefined) {
+        //no refresh token, redirect to spotify site for auth
+        console.log("Having user authorize with Spotify");
+        res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
+            response_type: "code",
+            client_id: process.env.CLIENT_ID,
+            redirect_uri: spotify_redirect_uri,
+            scope: "user-read-currently-playing"
+        }
+        ));
+    } else {
+        //can use refresh token
+        console.log("Going to use refresh token");
+        get_another_token(req, res); //will get a new access token and bring us back here
+    }
+} else {
+    //get the song data
+    let data = await get_song_data(req, res); //returns false if error
+    
+    if (data) {
+        const {title, artists, image} = data;
+        const url = await genius_search_result(title, artists); //get the genius url
+
+        //set data in browsers cookies
+        res.cookie("title", title);
+        res.cookie("artists", artists);
+        res.cookie("image", image)
+        res.cookie("url", url);
+    } else {
+        console.log("FAILED TO STORE SONG DATA");
+    }
+}
+*/
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {console.log("SERVER STARTED ON PORT", port);});
