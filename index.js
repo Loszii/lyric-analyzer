@@ -67,25 +67,14 @@ app.get("/api/url", async (req, res) => {
     //gets genius url and image using title and artist
     const title = req.query.title;
     const artists = req.query.artists;
-    const {url, img} = await genius_search_result(title, artists)
-    if (url == undefined) {
-        res.json({"url": "null"});
-    } else {
-        res.json({"url": url, "img": img});
-    }
+    const {url, img} = await genius_search_result(title, artists);
+    res.json({"url": url, "img": img});
 });
 
 async function genius_search_result(song_name, song_artists) {
     //uses genius api to search for the best fitting song and add its url to object to be returned
-    //if cannot find url, just returns an object with the given params and url: undefined
     try {
-        /*
-        SPOTIFY FORMATTING
-        const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
-        const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
-        let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();*/
-        let correct_title = song_name + " by " + song_artists;
-        console.log("Current song is:", correct_title);
+        console.log("Current song is:", song_name + " by " + song_artists);
     
         //search without the "by " for better results
         let encoded_name = encodeURIComponent(song_name + " " + song_artists); //to convert special characters that could mess up call
@@ -93,31 +82,52 @@ async function genius_search_result(song_name, song_artists) {
         let genius_json = await genius_response.json();
     
         let hits = genius_json["response"]["hits"];
-        let genius_data = get_best_hit(hits, correct_title, 0.70); //last param is threshold
+        let genius_data = get_best_hit(hits, song_name, song_artists, 0.75); //last param is threshold
 
-        //may still be undefined but return anyway
+        //may still be null but return anyway
         return genius_data;
     } catch (err) {
         console.log("Error in genius seach result:", err.message);
-        return undefined;
+        return {"url": null, "img": null};
     }
 }
 
-function get_best_hit(hits, correct_title, threshold) {
+function get_best_hit(hits, song_name, song_artists, threshold) {
     //takes in a list of hits from the genius api, uses a string similarity checker to select the best hit possible
-    let genius_url = undefined;
-    let genius_img = undefined;
+    let genius_url = null;
+    let genius_img = null;
 
-    let best_match = threshold; //needs atleast threshold% similarity
+    const split_artists = song_artists.split(" "); //split artists so order and amount of artists doesn't matter
+
+    let best_match = 0; 
     for (let i=0; i < hits.length; i++) {
         try {
-            let cur_name = hits[i]["result"]["full_title"];
-            let cur_match = stringSimilarity.compareTwoStrings(correct_title.toLowerCase(), cur_name.toLowerCase());
+            const cur_name = hits[i]["result"]["title"];
+            const cur_artists = hits[i]["result"]["artist_names"].split(" ");
 
-            if (cur_match > best_match) {
-                best_match = cur_match;
-                genius_url = hits[i]["result"]["url"];
-                genius_img = hits[i]["result"]["song_art_image_url"];
+            //score comparing the titles
+            let title_score = stringSimilarity.compareTwoStrings(cur_name.toLowerCase(), song_name.toLowerCase());
+
+            if (title_score >= threshold) {
+                //score comparing the artists
+                let artists_score = 0;
+
+                //iterate through all the current search results artists (split by spaces) and see if any match closely to our queried artists.
+                for (let j=0; j < cur_artists.length; j++) {
+                    let cur_match = 0;
+                    for (let k=0; k < split_artists.length; k++) {
+                        cur_match = Math.max(cur_match, stringSimilarity.compareTwoStrings(cur_artists[j].toLowerCase(), split_artists[k].toLowerCase()));
+                    }
+                    if (cur_match >= threshold) { //must match above threshold with atleast one of the artists
+                        artists_score += cur_match;
+                    }
+                }
+
+                if (artists_score != 0 && title_score + artists_score > best_match) { //had one artists above threshold and better than last match
+                    best_match =  title_score + artists_score;
+                    genius_url = hits[i]["result"]["url"];
+                    genius_img = hits[i]["result"]["song_art_image_url"];
+                }
             }
         } catch (err) {
             console.log("Error in get best hit:", err.message);
@@ -180,7 +190,7 @@ app.post("/api/summary", async (req, res) => {
     let title = req.query.title;
     let artists = req.query.artists;
     const lyrics = req.body;
-    
+
     if (lyrics == "") {
         res.send("Without the lyrics I am unable to analyze the current song.");
     } else {
@@ -203,8 +213,9 @@ app.post("/api/summary", async (req, res) => {
 });
 
 
+/*
+SPOTIFY STUFF BELOW
 
-//SPOTIFY STUFF BELOW
 async function get_another_token(req, res) {
     //uses refresh token to set new access token
     const refresh = req.cookies.refresh;
@@ -324,7 +335,7 @@ app.get("/callback", async (req, res) => {
 
 
 //old code below to incorporate spotify eventually
-/*
+
 const token = req.cookies.token;
 
 if (token == undefined) {
@@ -361,7 +372,12 @@ if (token == undefined) {
         console.log("FAILED TO STORE SONG DATA");
     }
 }
-*/
+
+SPOTIFY FORMATTING
+const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
+const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
+let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();*/
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {console.log("SERVER STARTED ON PORT", port);});

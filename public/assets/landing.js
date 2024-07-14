@@ -4,7 +4,7 @@ document.getElementById("search").addEventListener("click", async () => {
     let artists = document.getElementById("artists").value;
     let res = await fetch(`/api/url?title=${encodeURIComponent(title)}&artists=${encodeURIComponent(artists)}`);
     let res_json = await res.json();
-    if (res_json["url"] == "null") {
+    if (res_json["url"] == null) {
         document.getElementById("feedback").innerHTML = "No lyrics found";
     } else {
         localStorage.setItem("title", title);
