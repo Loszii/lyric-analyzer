@@ -65,10 +65,10 @@ app.get("/", async (req, res) => {
 
 app.get("/api/url", async (req, res) => {
     //gets genius url and image using title and artist
-    const title = req.query.title;
-    const artists = req.query.artists;
-    const {url, img} = await genius_search_result(title, artists);
-    res.json({"url": url, "img": img});
+    const q_title = req.query.title;
+    const q_artists = req.query.artists;
+    const {title, artists, url, img} = await genius_search_result(q_title, q_artists);
+    res.json({"title": title, "artists": artists, "url": url, "img": img});
 });
 
 async function genius_search_result(song_name, song_artists) {
@@ -88,12 +88,14 @@ async function genius_search_result(song_name, song_artists) {
         return genius_data;
     } catch (err) {
         console.log("Error in genius seach result:", err.message);
-        return {"url": null, "img": null};
+        return {"title": null, "artists": null,"url": null, "img": null};
     }
 }
 
 function get_best_hit(hits, song_name, song_artists, threshold) {
     //takes in a list of hits from the genius api, uses a string similarity checker to select the best hit possible
+    let genius_title = null;
+    let genius_artists = null;
     let genius_url = null;
     let genius_img = null;
 
@@ -125,6 +127,8 @@ function get_best_hit(hits, song_name, song_artists, threshold) {
 
                 if (artists_score != 0 && title_score + artists_score > best_match) { //had one artists above threshold and better than last match
                     best_match =  title_score + artists_score;
+                    genius_title = hits[i]["result"]["title"];
+                    genius_artists = hits[i]["result"]["artist_names"];
                     genius_url = hits[i]["result"]["url"];
                     genius_img = hits[i]["result"]["song_art_image_url"];
                 }
@@ -133,7 +137,7 @@ function get_best_hit(hits, song_name, song_artists, threshold) {
             console.log("Error in get best hit:", err.message);
         }
     }
-    return {"url": genius_url, "img": genius_img};
+    return {"title": genius_title, "artists": genius_artists, "url": genius_url, "img": genius_img};
 }
 
 //our api for front end

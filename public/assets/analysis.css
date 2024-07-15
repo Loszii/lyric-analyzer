@@ -21,7 +21,6 @@
     margin: 0;
     width: 75%;
     text-align: center;
-    text-decoration: underline;
 }
 
 #lyrics-container {
@@ -112,7 +111,7 @@
     #thumb-container {
         flex-basis: 50%;
     }
-    #lyrics-container {
+    #left-side {
         flex-basis: 45%;
     }
     #analysis-container {
@@ -124,7 +123,7 @@
     #thumb-container {
         flex-basis: 80%;
     }
-    #lyrics-container {
+    #left-side {
         flex-basis: 80%;
     }
     #analysis-container {

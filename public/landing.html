@@ -11,19 +11,23 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     </header>
     <body>
-        <h1 id="top">Lyrics Analyzer</h1>
+        <h1 id="top">Lyric Analyzer</h1>
         <div id="container">
-            <div>
-                <h1>title:</h1>
-                <input id="title" type="text">
-                <h1>artists:</h1>
-                <input id="artists" type="text">
+            <div id="inputs">
+                <div class="query">
+                    <h1>title:</h1>
+                    <input id="title" type="text">
+                </div>
+                <div class="query">
+                    <h1>artists:</h1>
+                    <input id="artists" type="text">  
+                </div>
             </div>
-            <div>
+            <div id="buttons">
                 <a id="search">Search</a>
-                <a>Connect to Spotify (disabled)</a>
-                <h1 id="feedback">Enter a song to start!</h1>
+                <a>Connect to Spotify (disabled)</a> 
             </div>
+            <h1 id="feedback">Enter a song to start!</h1>
         </div>
         <script src="assets/landing.js"></script>
     </body>
