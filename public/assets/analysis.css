@@ -41,6 +41,10 @@
     direction: ltr;
 }
 
+.lyric-line {
+    border-radius: 5px;
+}
+
 #analysis-container {
     flex-basis: 30%;
 }
