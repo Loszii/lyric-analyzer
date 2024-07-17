@@ -49,6 +49,7 @@ input {
     margin: 1em;
     color: black;
     background-color: rgb(50, 50, 50);
+    width: 50%;
 }
 
 #feedback {

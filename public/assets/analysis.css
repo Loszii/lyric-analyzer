@@ -2,8 +2,8 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: space-evenly;
-    margin-top: 1em;
-    gap: 1em;
+    margin-top: 2em;
+    gap: 2em;
 }
 
 #left-side {
@@ -16,22 +16,38 @@
     font-size: 2em;
 }
 
+#l-top {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+}
+
 #l-header {
-    display: inline-block;
     margin: 0;
-    width: 75%;
-    text-align: center;
+}
+
+/*to do: make button class for this and analyze button*/
+#deselect {
+    padding: 0.25em;
+    font-size: 1em;
+    background-color: black;
+    color: white;
+    border-radius: 5px;
+    text-decoration: bold;
+    width: 25%;
 }
 
 #lyrics-container {
     margin-top: 0.5em;
-    height: 80vh;
+    max-height: 80vh;
     overflow-y: auto;
     scrollbar-color: white black;
     direction: rtl;
     border-color: black;
     border-style: double;
     border-radius: 5px;
+    width: 100%;
 }
 
 #lyrics {
@@ -43,21 +59,26 @@
 
 .lyric-line {
     border-radius: 5px;
+    user-select: none;
 }
 
-#analysis-container {
+.col {
     flex-basis: 30%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 5px;
 }
 
 #analyze-button {
     padding: 0.25em;
     font-size: 2.5em;
-    display: block;
-    margin: auto;
     background-color: black;
     color: white;
     border-radius: 5px;
     text-decoration: bold;
+    width: 50%;
 }
 
 #analyze-button:hover {
@@ -70,34 +91,35 @@
     text-align: center;
 }
 
-#analysis {
+#analysis-container {
+    width: 100%;
     max-height: 70vh;
-    flex-basis: 30%;
     overflow-y: auto;
     scrollbar-color: black white;
-    padding: 0.5em;
+    background-color: white;
+    border-color: black;
+    border-style: double;
+    border-radius: 5px;
+}
 
+#analysis {
+    padding: 0.5em;
     margin-top: 1em;
     line-height: 200%;
     color: white;
     text-align: center;
 
     color: black;
-    background-color: white;
-    border-color: black;
-    border-style: double;
-    border-radius: 5px;
 
 }
 
-#thumb-container {
+#right-side {
     flex-basis: 30%;
     padding-top: 3em;
 }
 
 #thumbnail img {
     width: 100%;
-    height: auto;
     border-style: solid;
     border-color: white;
     border-radius: 5px;
@@ -112,25 +134,19 @@
 
 @media screen and (max-width: 1000px) {
     /*move song info down, only show lyrics and analysis*/
-    #thumb-container {
-        flex-basis: 50%;
-    }
-    #left-side {
-        flex-basis: 45%;
-    }
-    #analysis-container {
+    .col {
         flex-basis: 45%;
     }
 }
 @media screen and (max-width: 500px) {
     /*move song info down, only show lyrics and analysis*/
-    #thumb-container {
-        flex-basis: 80%;
-    }
-    #left-side {
-        flex-basis: 80%;
+    #lyrics-container {
+        max-height: none;
     }
     #analysis-container {
+        max-height: none;
+    }
+    .col {
         flex-basis: 80%;
     }
 }

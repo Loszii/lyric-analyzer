@@ -1,4 +1,15 @@
-document.getElementById("search").addEventListener("click", async () => {
+document.getElementById("search").addEventListener("click", find_song)
+const inputs = document.getElementsByClassName("query")
+
+for (let i=0; i < inputs.length; i++) {
+    inputs[i].addEventListener("keydown", async (event) => {
+        if (event.key == "Enter") {
+            await find_song();
+        }
+    });
+}
+
+async function find_song() {
     document.getElementById("feedback").innerHTML = "Searching...";
     let title = document.getElementById("title").value;
     let artists = document.getElementById("artists").value;
@@ -13,4 +24,4 @@ document.getElementById("search").addEventListener("click", async () => {
         localStorage.setItem("img", res_json["img"]);
         window.location.replace("/analysis.html");
     }
-})
+}

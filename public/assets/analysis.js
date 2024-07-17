@@ -86,6 +86,13 @@ async function main() {
             document.getElementById("analysis").innerHTML = "No Selected Content";
         }
     })
+
+    document.getElementById("deselect").addEventListener("click", () => {
+        for (let i=0; i < lyric_lines.length; i++) {
+            lyric_lines[i].style.backgroundColor = "transparent";
+            lyric_lines[i].style.color = "white";
+        }
+    })
 }
 
 main();
