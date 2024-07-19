@@ -1,19 +1,20 @@
 function get_data() {
     //searches cookies for information relating to the thumbnail
-    title = localStorage.getItem("title");
-    artists = localStorage.getItem("artists");
-    url = localStorage.getItem("url");
-    img = localStorage.getItem("img");
+    let title = localStorage.getItem("title");
+    let artists = localStorage.getItem("artists");
+    let url = localStorage.getItem("url");
+    let img = localStorage.getItem("img");
+    let date = localStorage.getItem("date");
 
     if (img == "undefined") {
         img = "/res/black.jpg";
     }
 
-    return {"title": title, "artists": artists, "url": url, "img": img};
+    return {"title": title, "artists": artists, "url": url, "img": img, "date": date};
 
 }
 
-async function get_lyrics() {
+async function get_lyrics(url) {
     //gets the lyrics from backend
     const res = await fetch(`/api/lyrics?url=${encodeURIComponent(url)}`)
     const lyrics = await res.text();
@@ -54,10 +55,12 @@ async function get_summary(title, artists) {
 }
 
 async function main() {
-    const {title, artists, url, img} = get_data();
-    document.getElementById("thumbnail").innerHTML = `<img src=${img}><h1>${title}</h1><h1>${artists}</h1>`;
-    await get_lyrics();
+    const {title, artists, url, img, date} = get_data();
+    document.getElementById("thumbnail").innerHTML = `<img src=${img}><h1>${title}</h1><h1>${artists}</h1><h1>${date}</h1>`;
+    await get_lyrics(url);
+    
     get_summary(title, artists);
+
     //adding ability to change background of lines with a click
     const lyric_lines = document.getElementsByClassName("lyric-line");
     for (let i=0; i < lyric_lines.length; i++) {
@@ -87,6 +90,7 @@ async function main() {
         }
     })
 
+    //deselect button
     document.getElementById("deselect").addEventListener("click", () => {
         for (let i=0; i < lyric_lines.length; i++) {
             lyric_lines[i].style.backgroundColor = "transparent";

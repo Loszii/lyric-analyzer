@@ -67,8 +67,8 @@ app.get("/api/url", async (req, res) => {
     //gets genius url and image using title and artist
     const q_title = req.query.title;
     const q_artists = req.query.artists;
-    const {title, artists, url, img} = await genius_search_result(q_title, q_artists);
-    res.json({"title": title, "artists": artists, "url": url, "img": img});
+    const {title, artists, url, img, date} = await genius_search_result(q_title, q_artists);
+    res.json({"title": title, "artists": artists, "url": url, "img": img, "date": date});
 });
 
 async function genius_search_result(song_name, song_artists) {
@@ -88,7 +88,7 @@ async function genius_search_result(song_name, song_artists) {
         return genius_data;
     } catch (err) {
         console.log("Error in genius seach result:", err.message);
-        return {"title": null, "artists": null,"url": null, "img": null};
+        return {"title": null, "artists": null,"url": null, "img": null, "date": null};
     }
 }
 
@@ -98,6 +98,7 @@ function get_best_hit(hits, song_name, song_artists, threshold) {
     let genius_artists = null;
     let genius_url = null;
     let genius_img = null;
+    let genius_date = null;
 
     const split_artists = song_artists.split(" "); //split artists so order and amount of artists doesn't matter
 
@@ -131,13 +132,14 @@ function get_best_hit(hits, song_name, song_artists, threshold) {
                     genius_artists = hits[i]["result"]["artist_names"];
                     genius_url = hits[i]["result"]["url"];
                     genius_img = hits[i]["result"]["song_art_image_url"];
+                    genius_date = hits[i]["result"]["release_date_for_display"];
                 }
             }
         } catch (err) {
             console.log("Error in get best hit:", err.message);
         }
     }
-    return {"title": genius_title, "artists": genius_artists, "url": genius_url, "img": genius_img};
+    return {"title": genius_title, "artists": genius_artists, "url": genius_url, "img": genius_img, "date": genius_date};
 }
 
 //our api for front end
@@ -171,7 +173,11 @@ app.post("/api/analyze", async (req, res) => {
     let artists = req.query.artists;
 
     try {
-        const to_prepend = `I am going to send you lines of lyrics from ${title} by ${artists}, please analyze each line in one to two sentences. Place the line before the analysis, Lyrics start now: \n`
+        const to_prepend = `Your intelligence is being used as a part of my lyric analyzing site. 
+        I am going to send you lines of lyrics from ${title} by ${artists}, please deeply analyze each line in about one to two sentences. 
+        Since this will be in my website, only analyze the lyrics and respond with no other dialogue please. 
+        Try to be creative and not repeat the same stuff to much, including the way you introduce each analysis. 
+        Respond with each line as a header placed before its corresponding analysis. Lyrics start now: \n`
         const lyrics = req.body;
         const prompt = to_prepend + lyrics;
         const result = await model.generateContent(prompt);

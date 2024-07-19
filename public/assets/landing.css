@@ -8,7 +8,7 @@
 #inputs {
     display: flex;
     justify-content: center;
-    margin-bottom: 3em;
+    margin-bottom: 2em;
     flex-wrap: wrap;
 }
 
@@ -21,13 +21,13 @@
 
 #top {
     text-decoration: underline;
-    font-size: 4em;
+    font-size: 3.5em;
     margin-bottom: 2em;
 }
 
 h1 {
     text-align: center;
-    font-size: 3em;
+    font-size: 2.5em;
 }
 
 a {
@@ -36,7 +36,7 @@ a {
     border-style: solid;
     border-color: black;
     border-radius: 5px;
-    padding: 0.5em 1em;
+    padding: 0.25em 0.5em;
     transition: color 0.5s;
 }
 
@@ -46,7 +46,7 @@ a:hover {
 
 input {
     font-size: 2em;
-    margin: 1em;
+    margin: 0.5em;
     color: black;
     background-color: rgb(50, 50, 50);
     width: 50%;

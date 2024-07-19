@@ -2,12 +2,8 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: space-evenly;
-    margin-top: 2em;
-    gap: 2em;
-}
-
-#left-side {
-    flex-basis: 30%;
+    margin-top: 1em;
+    gap: 1em;
 }
 
 #back {
@@ -27,7 +23,6 @@
     margin: 0;
 }
 
-/*to do: make button class for this and analyze button*/
 #deselect {
     padding: 0.25em;
     font-size: 1em;
@@ -39,8 +34,7 @@
 }
 
 #lyrics-container {
-    margin-top: 0.5em;
-    max-height: 80vh;
+    max-height: 85vh;
     overflow-y: auto;
     scrollbar-color: white black;
     direction: rtl;
@@ -68,17 +62,17 @@
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    gap: 5px;
+    gap: 0.25em;
 }
 
 #analyze-button {
     padding: 0.25em;
-    font-size: 2.5em;
+    font-size: 2em;
     background-color: black;
     color: white;
     border-radius: 5px;
     text-decoration: bold;
-    width: 50%;
+    width: 40%;
 }
 
 #analyze-button:hover {
@@ -93,7 +87,7 @@
 
 #analysis-container {
     width: 100%;
-    max-height: 70vh;
+    max-height: 75vh;
     overflow-y: auto;
     scrollbar-color: black white;
     background-color: white;
@@ -104,18 +98,10 @@
 
 #analysis {
     padding: 0.5em;
-    margin-top: 1em;
     line-height: 200%;
     color: white;
     text-align: center;
-
     color: black;
-
-}
-
-#right-side {
-    flex-basis: 30%;
-    padding-top: 3em;
 }
 
 #thumbnail img {
@@ -127,19 +113,17 @@
 
 #thumbnail h1 {
     background-color: white;
-    font-size: 2em;
+    font-size: 1.75em;
     text-align: center;
     border-radius: 5px;
 }
 
 @media screen and (max-width: 1000px) {
-    /*move song info down, only show lyrics and analysis*/
     .col {
         flex-basis: 45%;
     }
 }
 @media screen and (max-width: 500px) {
-    /*move song info down, only show lyrics and analysis*/
     #lyrics-container {
         max-height: none;
     }

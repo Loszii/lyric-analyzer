@@ -22,6 +22,7 @@ async function find_song() {
         localStorage.setItem("artists", res_json["artists"]);
         localStorage.setItem("url", res_json["url"]);
         localStorage.setItem("img", res_json["img"]);
+        localStorage.setItem("date", res_json["date"]);
         window.location.replace("/analysis.html");
     }
 }
