@@ -3,6 +3,7 @@
     flex-wrap: wrap;
     justify-content: space-evenly;
     margin-top: 1em;
+    margin-bottom: 2em;
     gap: 1em;
 }
 
@@ -72,7 +73,7 @@
     color: white;
     border-radius: 5px;
     text-decoration: bold;
-    width: 40%;
+    width: 50%;
 }
 
 #analyze-button:hover {
@@ -123,12 +124,18 @@
         flex-basis: 45%;
     }
 }
-@media screen and (max-width: 500px) {
+@media screen and (max-width: 650px) {
     #lyrics-container {
         max-height: none;
     }
+    #lyrics {
+        line-height: 150%;
+    }
     #analysis-container {
         max-height: none;
+    }
+    #analysis {
+        line-height: 150%;
     }
     .col {
         flex-basis: 80%;
