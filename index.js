@@ -63,7 +63,7 @@ app.get("/", async (req, res) => {
     res.sendFile(__dirname + "/public/landing.html");
 });
 
-app.get("/api/url", async (req, res) => {
+app.get("/api/data", async (req, res) => {
     //gets genius url and image using title and artist
     const q_title = req.query.title;
     const q_artists = req.query.artists;
@@ -223,11 +223,47 @@ app.post("/api/summary", async (req, res) => {
 });
 
 
-/*
-SPOTIFY STUFF BELOW
+
+//SPOTIFY STUFF BELOW
+
+//FIX BELOW
+
+app.get("/api/spotify", async (req, res) => {
+    //spotify endpoint to get the current title/artists
+    let token = req.cookies.token;
+    if (token == undefined) {
+        //redirect useres to login with spotify and authorize us to see their playback
+        if (req.cookies.refresh == undefined) {
+            //no refresh token, redirect to spotify site for auth
+            console.log("Having user authorize with Spotify");
+            res.json({"title": null, "artists": null, "redirect": "https://accounts.spotify.com/authorize?" + querystring.stringify({
+                response_type: "code",
+                client_id: process.env.CLIENT_ID,
+                redirect_uri: spotify_redirect_uri,
+                scope: "user-read-currently-playing"
+            }
+            )});
+            return;
+        } else {
+            //can use refresh token
+            console.log("Going to use refresh token");
+            token = await get_another_token(req, res); //will get a new access token
+        }
+    }
+
+    //get the song data
+    const {title, artists} = await get_song_data(token); //returns false if error
+    
+    if (title != null) {
+        res.json({"title": title, "artists": artists, "redirect": null});
+    } else {
+        res.json({"title": null, "artists": null, "redirect": null})
+        console.log("FAILED TO STORE SONG DATA");
+    }
+})
 
 async function get_another_token(req, res) {
-    //uses refresh token to set new access token
+    //uses refresh token to set new access token and return it
     const refresh = req.cookies.refresh;
 
     const data = await fetch("https://accounts.spotify.com/api/token", {
@@ -245,6 +281,7 @@ async function get_another_token(req, res) {
     if (refresh_data.error != undefined) {
         //refresh token invalid
         res.clearCookie("refresh");
+        return null;
     } else {
         const token = refresh_data["access_token"];
         const expires_in = refresh_data["expires_in"];
@@ -255,19 +292,16 @@ async function get_another_token(req, res) {
             secure: true,
             maxAge: expires_in*1000 // 1 hour typically (1k for mili)
         });
+        return token;
     }
-    //refresh page
-    res.redirect("/");
 }
 
-async function get_song_data(req, res) {
+async function get_song_data(token) {
     //returns song data by calling spotify api
     try {
-        let song_name;
+        let song_name = null;
         let song_artists = [];
-        let song_image = undefined; //in case it is local and doesn't have one
-        const token = req.cookies.token;
-        console.log("Using token:", token);
+
         const cur_data = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {headers: {Authorization: `Bearer ${token}`}}); //using our access token
         console.log("Get song response:", cur_data);
         const song_data_json = await cur_data.json();
@@ -278,16 +312,16 @@ async function get_song_data(req, res) {
         for (let i=0; i < song_data_json["item"]["artists"].length; i++) {
             song_artists.push(song_data_json["item"]["artists"][i]["name"]);
         }
-        song_artists = song_artists.join(", "); //make string of artists
+        song_artists = song_artists.join(" "); //make string of artists
     
-        if (song_data_json["item"]["album"]["images"].length > 0) {
-            song_image = song_data_json["item"]["album"]["images"][0]["url"]; //0 is best quality version
-        }        
+        const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
+        const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
+        let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();
         
-        return {"title": song_name, "artists": song_artists, "image": song_image};
+        return {"title": formatted_name, "artists": song_artists};
     } catch (err) {
         console.log("Failed to get song data:", err.message);
-        return false;
+        return {"title": null, "artists": null};
     }
 }
 
@@ -333,61 +367,16 @@ app.get("/callback", async (req, res) => {
             res.redirect("/");
         } catch (err) {
             console.log("Error in Spotify authorization:", err.message);
-            res.sendFile(__dirname + "/public/error.html");
+            //make the dialogue box state error happened in front end here
+            res.sendFile(__dirname + "/public/landing.html");
         }
     } else {
         //user hit cancel
         const error = req.query.error || "Unkown error";
         console.log("Error in Spotify authorization:", error);
-        res.sendFile(__dirname + "/public/error.html");
+        res.sendFile(__dirname + "/public/landing.html");
     }
 });
-
-
-//old code below to incorporate spotify eventually
-
-const token = req.cookies.token;
-
-if (token == undefined) {
-    //redirect useres to login with spotify and authorize us to see their playback
-    if (req.cookies.refresh == undefined) {
-        //no refresh token, redirect to spotify site for auth
-        console.log("Having user authorize with Spotify");
-        res.redirect("https://accounts.spotify.com/authorize?" + querystring.stringify({
-            response_type: "code",
-            client_id: process.env.CLIENT_ID,
-            redirect_uri: spotify_redirect_uri,
-            scope: "user-read-currently-playing"
-        }
-        ));
-    } else {
-        //can use refresh token
-        console.log("Going to use refresh token");
-        get_another_token(req, res); //will get a new access token and bring us back here
-    }
-} else {
-    //get the song data
-    let data = await get_song_data(req, res); //returns false if error
-    
-    if (data) {
-        const {title, artists, image} = data;
-        const url = await genius_search_result(title, artists); //get the genius url
-
-        //set data in browsers cookies
-        res.cookie("title", title);
-        res.cookie("artists", artists);
-        res.cookie("image", image)
-        res.cookie("url", url);
-    } else {
-        console.log("FAILED TO STORE SONG DATA");
-    }
-}
-
-SPOTIFY FORMATTING
-const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
-const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
-let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();*/
-
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {console.log("SERVER STARTED ON PORT", port);});

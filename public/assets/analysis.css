@@ -113,7 +113,7 @@
 }
 
 #thumbnail h1 {
-    background-color: white;
+    background: linear-gradient(45deg, rgb(0, 0, 0), rgb(255, 255, 255), rgb(0, 0, 0));
     font-size: 1.75em;
     text-align: center;
     border-radius: 5px;
