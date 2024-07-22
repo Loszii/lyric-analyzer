@@ -38,6 +38,7 @@ a {
     border-radius: 5px;
     padding: 0.25em 0.5em;
     transition: color 0.5s;
+    color: grey;
 }
 
 a:hover {

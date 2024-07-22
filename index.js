@@ -364,17 +364,17 @@ app.get("/callback", async (req, res) => {
             });
 
             //get song current info
-            res.redirect("/");
+            res.redirect("/?status=update");
         } catch (err) {
             console.log("Error in Spotify authorization:", err.message);
             //make the dialogue box state error happened in front end here
-            res.sendFile(__dirname + "/public/landing.html");
+            res.redirect("/?status=error");
         }
     } else {
         //user hit cancel
         const error = req.query.error || "Unkown error";
         console.log("Error in Spotify authorization:", error);
-        res.sendFile(__dirname + "/public/landing.html");
+        res.redirect("/?status=error");
     }
 });
 
