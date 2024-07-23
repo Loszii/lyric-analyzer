@@ -16,7 +16,7 @@ I used **Node.js** and **Express** for the backend, and then plain **HTML**, **C
 
 # Plans
 
-I would like to incorporate the **Spotify API**, since this would get around the user needing to search a song. I have already implemented this feature, but until my Spotify App gets its API upgrade approved, it won't work.
+I would like to incorporate the **Spotify API**, since this would get around the user needing to search a song. I have already implemented this feature, but until my Spotify App gets its API upgrade approved, it won't work for others.
 
 # How to Use
 Head over to https://lyric-analyzer.vercel.app/ to test it out!

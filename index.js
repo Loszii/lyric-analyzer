@@ -72,11 +72,8 @@ app.get("/api/data", async (req, res) => {
 });
 
 async function genius_search_result(song_name, song_artists) {
-    //uses genius api to search for the best fitting song and add its url to object to be returned
-    try {
-        console.log("Current song is:", song_name + " by " + song_artists);
-    
-        //search without the "by " for better results
+    //uses genius api to search for the best fitting song and returns a object with its meta data
+    try {    
         let encoded_name = encodeURIComponent(song_name + " " + song_artists); //to convert special characters that could mess up call
         let genius_response = await fetch("https://api.genius.com/search?q=" + encoded_name, {headers: {Authorization: `Bearer ${process.env.GENIUS_KEY}`}});
         let genius_json = await genius_response.json();
@@ -167,6 +164,7 @@ app.get("/api/lyrics", async (req, res) => {
 
 });
 
+//ANALYSIS
 app.post("/api/analyze", async (req, res) => {
     //generates an analysis of the current selected lyrics
     let title = req.query.title;
@@ -222,19 +220,14 @@ app.post("/api/summary", async (req, res) => {
     }
 });
 
-
-
-//SPOTIFY STUFF BELOW
-
-//FIX BELOW
-
+//SPOTIFY
 app.get("/api/spotify", async (req, res) => {
     //spotify endpoint to get the current title/artists
     let token = req.cookies.token;
     if (token == undefined) {
         //redirect useres to login with spotify and authorize us to see their playback
         if (req.cookies.refresh == undefined) {
-            //no refresh token, redirect to spotify site for auth
+            //no refresh token, send the redirect url back to front end
             console.log("Having user authorize with Spotify");
             res.json({"title": null, "artists": null, "redirect": "https://accounts.spotify.com/authorize?" + querystring.stringify({
                 response_type: "code",
@@ -252,13 +245,12 @@ app.get("/api/spotify", async (req, res) => {
     }
 
     //get the song data
-    const {title, artists} = await get_song_data(token); //returns false if error
+    const {title, artists} = await get_current_playing(token); //returns false if error
     
     if (title != null) {
         res.json({"title": title, "artists": artists, "redirect": null});
     } else {
         res.json({"title": null, "artists": null, "redirect": null})
-        console.log("FAILED TO STORE SONG DATA");
     }
 })
 
@@ -266,46 +258,49 @@ async function get_another_token(req, res) {
     //uses refresh token to set new access token and return it
     const refresh = req.cookies.refresh;
 
-    const data = await fetch("https://accounts.spotify.com/api/token", {
-        method: "POST",
-        headers: {
-            "content-type": "application/x-www-form-urlencoded",
-            "Authorization": "Basic " + (new Buffer.from(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET).toString("base64")) //converting to base64
-        },
-        body: new URLSearchParams({ //urlSearchParams encodes in content-type
-            grant_type: "refresh_token",
-            refresh_token: refresh
+    try {
+        const data = await fetch("https://accounts.spotify.com/api/token", {
+            method: "POST",
+            headers: {
+                "content-type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic " + (new Buffer.from(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET).toString("base64")) //converting to base64
+            },
+            body: new URLSearchParams({ //urlSearchParams encodes in content-type
+                grant_type: "refresh_token",
+                refresh_token: refresh
+            })
         })
-    })
-    const refresh_data = await data.json();
-    if (refresh_data.error != undefined) {
-        //refresh token invalid
-        res.clearCookie("refresh");
+        const refresh_data = await data.json();
+        if (refresh_data.error != undefined) {
+            //refresh token invalid
+            res.clearCookie("refresh");
+            return null;
+        } else {
+            const token = refresh_data["access_token"];
+            const expires_in = refresh_data["expires_in"];
+        
+            //setting new token
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: true,
+                maxAge: expires_in*1000 // 1 hour typically (1k for mili)
+            });
+            return token;
+        }
+    } catch (err) {
+        console.log("Failed to get another token:", err.message);
         return null;
-    } else {
-        const token = refresh_data["access_token"];
-        const expires_in = refresh_data["expires_in"];
-    
-        //setting new token
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,
-            maxAge: expires_in*1000 // 1 hour typically (1k for mili)
-        });
-        return token;
     }
 }
 
-async function get_song_data(token) {
+async function get_current_playing(token) {
     //returns song data by calling spotify api
     try {
         let song_name = null;
         let song_artists = [];
 
         const cur_data = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {headers: {Authorization: `Bearer ${token}`}}); //using our access token
-        console.log("Get song response:", cur_data);
         const song_data_json = await cur_data.json();
-        console.log("Get song response json:", song_data_json);
         song_name = song_data_json["item"]["name"];
     
         //append artists to song_artists
@@ -314,8 +309,10 @@ async function get_song_data(token) {
         }
         song_artists = song_artists.join(" "); //make string of artists
     
+        //format the name for a more accurate search
         const regex1 = /\(.*?\)|\[.*?\]/g; //removes all parenthesis and brackets
         const regex2 = / - .*$/; //for - Remastered (removes dash and all after)
+
         let formatted_name = song_name.replace(regex1, "").replace(regex2, "").trim();
         
         return {"title": formatted_name, "artists": song_artists};
@@ -325,9 +322,8 @@ async function get_song_data(token) {
     }
 }
 
-//handling get requests after user login
 app.get("/callback", async (req, res) => {
-
+    //calback request that is arrived at after authorization, has a code to get access token and refresh if worked
     //get code from login
     const code = req.query.code || null;
 

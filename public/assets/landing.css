@@ -1,14 +1,13 @@
-#container {
+html, body {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
     flex-direction: column;
+    gap: 3em;
+    height: 100%;
 }
 
 #inputs {
     display: flex;
     justify-content: center;
-    margin-bottom: 2em;
     flex-wrap: wrap;
 }
 
@@ -22,7 +21,6 @@
 #top {
     text-decoration: underline;
     font-size: 3.5em;
-    margin-bottom: 2em;
 }
 
 h1 {
@@ -55,7 +53,6 @@ input {
 
 #feedback {
     font-size: 2em;
-    padding: 1em;
     color: transparent;
     background: linear-gradient(black, white);
     background-clip: text;
