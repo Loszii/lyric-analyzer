@@ -40,7 +40,7 @@ async function find_song_spotify() {
 }
 
 async function main() {
-
+    //main function to run when page is reloaded, checks if need to update inputs and adds event listeners
     //check if just connected to spotify and needs updating
     const search_params = new URLSearchParams(window.location.search);
 
@@ -58,7 +58,7 @@ async function main() {
     
     
     document.getElementById("search").addEventListener("click", find_song)
-    const inputs = document.getElementsByClassName("query")
+    const inputs = document.getElementsByTagName("input")
     
     for (let i=0; i < inputs.length; i++) {
         inputs[i].addEventListener("keydown", async (event) => {

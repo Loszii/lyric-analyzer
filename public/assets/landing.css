@@ -1,65 +1,39 @@
-html, body {
-    display: flex;
-    flex-direction: column;
-    gap: 3em;
+#container, html, body {
     height: 100%;
 }
 
-#inputs {
+#container {
     display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.query {
-    display: flex;
+    flex-direction: column;
     align-items: center;
-    flex-wrap: wrap;
-    justify-content: center;
+    justify-content: space-evenly;
+    text-align: center;
 }
 
-#top {
+#header {
     text-decoration: underline;
     font-size: 3.5em;
 }
 
+.side-flex {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1em;
+}
+
 h1 {
-    text-align: center;
     font-size: 2.5em;
 }
 
-a {
-    user-select: none;
-    font-size: 2em;
-    border-style: solid;
-    border-color: black;
-    border-radius: 5px;
-    padding: 0.25em 0.5em;
-    transition: color 0.5s;
-    color: grey;
-}
-
-a:hover {
-    color: white;
-}
-
 input {
+    color: white;
     font-size: 1.5em;
     margin: 0.5em;
-    color: black;
-    background-color: rgb(50, 50, 50);
     width: 50%;
-}
-
-#feedback {
-    font-size: 2em;
-    color: transparent;
-    background: linear-gradient(black, white);
-    background-clip: text;
-}
-
-#buttons {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    border-style: solid;
+    border-radius: 5px;
+    border-color: rgb(25, 25, 25);
+    background-color: rgb(10, 10, 10);
 }

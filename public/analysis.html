@@ -12,27 +12,18 @@
     </header>
     <body>
         <div id="container">
+            <div class="col" id="thumbnail"></div>
             <div class="col">
-                <div id="thumb-container">
-                    <div id="thumbnail"></div>
-                </div>
-            </div>
-            <div class="col">
-                <div id="l-top">
-                    <a id="back" href="/">&#8592;</a>
-                    <h1 id="l-header">Lyrics</h1>
-                    <button id="deselect">deselect all</button>
-                </div>
-                <div id="lyrics-container">
-                    <div id="lyrics">LOADING...</div>
-                </div>
-            </div>
-            <div class="col">
-                <button id="analyze-button">Analyze</button>
                 <h1 id="guidance">(Click lyrics to analyze)</h1>
-                <div id="analysis-container">
-                    <div id="analysis">LOADING...</div>
+                <div class="content" id="analysis">LOADING...</div>
+            </div>
+            <div class="col">
+                <div class="header">
+                    <a class="btn" id="back" href="/">&#8592;</a>
+                    <a id="analyze-button" class="btn">Analyze</a>
+                    <a id="deselect" class="btn">deselect all</a>
                 </div>
+                <div class="content" id="lyrics">LOADING...</div>
             </div>
         </div>
         <script src="assets/analysis.js"></script>

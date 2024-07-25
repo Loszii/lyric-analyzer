@@ -39,7 +39,6 @@ async function get_analysis(title, artists, lyrics) {
     const data = await res.text();
 
     container.innerHTML = data;
-    window.scrollTo(0, document.body.scrollHeight);
 
 }
 

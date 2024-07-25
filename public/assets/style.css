@@ -1,10 +1,26 @@
 body {
+    background-color: black;
+    color: white;
+}
+
+* {
     box-sizing: border-box;
-    background-image: linear-gradient(rgb(50,50,50), black);
-    background-attachment: fixed;
     font-family: "Inter Tight", sans-serif;
     font-size: calc((1vw + 1vh + 2rem)*(1/3));
     margin: 0;
     padding: 0;
-    transition: 0.25s ease-in-out;
+}
+
+.btn {
+    user-select: none;
+    font-size: 2em;
+    border-style: solid;
+    border-color: rgb(25, 25, 25);
+    border-radius: 5px;
+    padding: 0.25em 0.5em;
+    transition: color 0.5s;
+}
+
+.btn:hover {
+    color: red;
 }

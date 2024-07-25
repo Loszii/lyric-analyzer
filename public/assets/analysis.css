@@ -1,60 +1,17 @@
+#container, html, body {
+    height: 100%;
+}
+
+body {
+    margin-top: 1em;
+    height: 95%;
+}
+
 #container {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-evenly;
-    margin-top: 1em;
-    margin-bottom: 2em;
-    gap: 1em;
-}
-
-#back {
-    color: black;
-    text-decoration: none;
-    font-size: 2em;
-}
-
-#l-top {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    align-items: center;
-}
-
-#l-header {
-    margin: 0;
-}
-
-#deselect {
-    padding: 0.25em;
-    font-size: 1em;
-    background-color: black;
-    color: white;
-    border-radius: 5px;
-    text-decoration: bold;
-    width: 25%;
-}
-
-#lyrics-container {
-    max-height: 85vh;
-    overflow-y: auto;
-    scrollbar-color: white black;
-    direction: rtl;
-    border-color: black;
-    border-style: double;
-    border-radius: 5px;
-    width: 100%;
-}
-
-#lyrics {
-    padding-left: 1em;
-    line-height: 200%;
-    color: white;
-    direction: ltr;
-}
-
-.lyric-line {
-    border-radius: 5px;
-    user-select: none;
+    text-align: center;
 }
 
 .col {
@@ -64,45 +21,8 @@
     justify-content: flex-start;
     align-items: center;
     gap: 0.25em;
-}
-
-#analyze-button {
-    padding: 0.25em;
-    font-size: 2em;
-    background-color: black;
-    color: white;
-    border-radius: 5px;
-    text-decoration: bold;
-    width: 50%;
-}
-
-#analyze-button:hover {
-    box-shadow: 0px 0px 10px black;
-}
-
-#guidance {
-    font-size: 0.75em;
-    color: white;
-    text-align: center;
-}
-
-#analysis-container {
-    width: 100%;
-    max-height: 75vh;
-    overflow-y: auto;
-    scrollbar-color: black white;
-    background-color: white;
-    border-color: black;
-    border-style: double;
-    border-radius: 5px;
-}
-
-#analysis {
-    padding: 0.5em;
-    line-height: 200%;
-    color: white;
-    text-align: center;
-    color: black;
+    height: 100%;
+    padding-bottom: 1em;
 }
 
 #thumbnail img {
@@ -113,31 +33,74 @@
 }
 
 #thumbnail h1 {
-    background: linear-gradient(45deg, rgb(0, 0, 0), rgb(255, 255, 255), rgb(0, 0, 0));
+    color: black;
+    background: rgb(10, 10, 10);
     font-size: 1.75em;
-    text-align: center;
+    border-style: solid;
+    border-color: rgb(25, 25, 25);
     border-radius: 5px;
+    width: 100%;
+    text-shadow: 0px 0px 5px white;
+    margin-top: 0.1em;
 }
 
+
+
+#guidance {
+    font-size: 0.75em;
+}
+
+.content {
+    width: 100%;
+    max-height: 100%;
+    padding: 0.5em;
+    line-height: 200%;
+    overflow-y: auto;
+    scrollbar-color: white black;
+    border-radius: 5px;
+    background-color: rgb(10, 10, 10);
+    border-style: solid;
+    border-color: rgb(25, 25, 25);
+}
+
+#analysis h2 {
+    text-decoration: underline;
+}
+
+.header {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    align-items: center;
+}
+
+#back {
+    color: white;
+    text-decoration: none;
+}
+
+.btn {
+    font-size: 1.25em;
+}
+
+.lyric-line {
+    border-radius: 5px;
+    user-select: none;
+}
+
+/*responsiveness*/
 @media screen and (max-width: 1000px) {
     .col {
         flex-basis: 45%;
     }
 }
 @media screen and (max-width: 650px) {
-    #lyrics-container {
+    .content {
         max-height: none;
-    }
-    #lyrics {
-        line-height: 150%;
-    }
-    #analysis-container {
-        max-height: none;
-    }
-    #analysis {
         line-height: 150%;
     }
     .col {
+        height: auto;
         flex-basis: 80%;
     }
 }
