@@ -10,6 +10,11 @@ function get_data() {
         img = "/res/black.jpg";
     }
 
+    //no local storage data, they either cleared or skipped landing page so redirect back
+    if (title == null) {
+        window.location.href = "/";
+    }
+
     return {"title": title, "artists": artists, "url": url, "img": img, "date": date};
 
 }
