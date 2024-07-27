@@ -1,4 +1,3 @@
-require("dotenv").config();
 const cookieParser = require("cookie-parser");
 const express = require("express");
 const querystring = require("querystring");
@@ -7,7 +6,7 @@ const { HarmBlockThreshold, HarmCategory, GoogleGenerativeAI } = require("@googl
 const markdownIt = require("markdown-it");
 const stringSimilarity = require("string-similarity");
 const favicon = require("serve-favicon");
-const { dirname } = require("path");
+require("dotenv").config();
 
 //setting up google ai
 const safety_settings = [
@@ -357,6 +356,7 @@ app.get("/callback", async (req, res) => {
             res.cookie("refresh", refresh, {
                 httpOnly: true,
                 secure: true,
+                maxAge: 3.154 * (10**10) //one year in ms, these are indefinite but this is to prevent session expiration
             });
 
             //get song current info

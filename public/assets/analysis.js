@@ -1,5 +1,5 @@
 function get_data() {
-    //searches cookies for information relating to the thumbnail
+    //get data that landing.js has set into local storage
     let title = localStorage.getItem("title");
     let artists = localStorage.getItem("artists");
     let url = localStorage.getItem("url");
@@ -23,6 +23,7 @@ async function get_lyrics(url) {
     for (let i=0; i < seperated.length; i++) {
         inner_html += "<div class=\"lyric-line\">" + seperated[i] + "</div>";
     }
+    localStorage.setItem("lyrics", inner_html);
     document.getElementById("lyrics").innerHTML = inner_html;
 }
 
@@ -51,15 +52,26 @@ async function get_summary(title, artists) {
     })
     const data = await res.text();
 
+    localStorage.setItem("summary", data);
     document.getElementById("analysis").innerHTML = data;
 }
 
 async function main() {
+    //main code to run everytime this page is loaded
     const {title, artists, url, img, date} = get_data();
     document.getElementById("thumbnail").innerHTML = `<img src=${img}><h1>${title}</h1><h1>${artists}</h1><h1>${date}</h1>`;
-    await get_lyrics(url);
-    
-    get_summary(title, artists);
+
+    //don't want to update if haven't changed songs
+    if (localStorage.getItem("prev-url") != localStorage.getItem("url")) {
+        //these two functions will save it to the local storage
+        await get_lyrics(url);
+        await get_summary(title, artists);
+        localStorage.setItem("prev-url", url);
+    } else {
+        //get from last local storage dump
+        document.getElementById("lyrics").innerHTML = localStorage.getItem("lyrics");
+        document.getElementById("analysis").innerHTML = localStorage.getItem("summary");
+    }
 
     //adding ability to change background of lines with a click
     const lyric_lines = document.getElementsByClassName("lyric-line");
