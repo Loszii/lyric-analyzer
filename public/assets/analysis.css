@@ -28,7 +28,7 @@ body {
 #thumbnail img {
     width: 100%;
     border-style: solid;
-    border-color: white;
+    border-color: rgb(25, 25, 25);
     border-radius: 5px;
 }
 

@@ -23,8 +23,21 @@ async function get_lyrics(url) {
     for (let i=0; i < seperated.length; i++) {
         inner_html += "<div class=\"lyric-line\">" + seperated[i] + "</div>";
     }
-    localStorage.setItem("lyrics", inner_html);
     document.getElementById("lyrics").innerHTML = inner_html;
+    return inner_html;
+}
+
+async function get_summary(title, artists) {
+    //gets the summary of song and writes to analysis div
+    const res = await fetch(`/api/summary?title=${title}&artists=${artists}`, {
+        method: "POST",
+        headers: {'Content-Type': 'text/plain'},
+        body: document.getElementById("lyrics").innerText
+    })
+    const data = await res.text();
+
+    document.getElementById("analysis").innerHTML = data;
+    return data;
 }
 
 async function get_analysis(title, artists, lyrics) {
@@ -40,20 +53,6 @@ async function get_analysis(title, artists, lyrics) {
     const data = await res.text();
 
     container.innerHTML = data;
-
-}
-
-async function get_summary(title, artists) {
-    //gets the summary of song and writes to analysis div
-    const res = await fetch(`/api/summary?title=${title}&artists=${artists}`, {
-        method: "POST",
-        headers: {'Content-Type': 'text/plain'},
-        body: document.getElementById("lyrics").innerText
-    })
-    const data = await res.text();
-
-    localStorage.setItem("summary", data);
-    document.getElementById("analysis").innerHTML = data;
 }
 
 async function main() {
@@ -61,12 +60,13 @@ async function main() {
     const {title, artists, url, img, date} = get_data();
     document.getElementById("thumbnail").innerHTML = `<img src=${img}><h1>${title}</h1><h1>${artists}</h1><h1>${date}</h1>`;
 
-    //don't want to update if haven't changed songs
-    if (localStorage.getItem("prev-url") != localStorage.getItem("url")) {
-        //these two functions will save it to the local storage
-        await get_lyrics(url);
-        await get_summary(title, artists);
-        localStorage.setItem("prev-url", url);
+    if (localStorage.getItem("cur") != url) {
+        //need to get new api data
+        const lyrics = await get_lyrics(url);
+        const summary = await get_summary(title, artists);
+        localStorage.setItem("cur", url);
+        localStorage.setItem("lyrics", lyrics);
+        localStorage.setItem("summary", summary);
     } else {
         //get from last local storage dump
         document.getElementById("lyrics").innerHTML = localStorage.getItem("lyrics");
@@ -86,7 +86,8 @@ async function main() {
     }
 
     //lines with white background are analyzed when using button
-    document.getElementById("analyze-button").addEventListener("click", () => {
+    let cooldown = false;
+    document.getElementById("analyze-button").addEventListener("click", async () => {
         //send the currently selected text to backend for analysis
         let lyrics = "";
         for (let i=0; i < lyric_lines.length; i++) {
@@ -95,10 +96,15 @@ async function main() {
             }
         }
 
-        if (lyrics != "") {
-            get_analysis(title, artists, lyrics);
-        } else {
+        if (lyrics == "") {
             document.getElementById("analysis").innerHTML = "No Selected Content";
+        } else if (cooldown) {
+            document.getElementById("analysis").innerHTML = "Please Wait 3 Seconds Between Analysis";
+        } else {
+            //put on cooldown and get analysis
+            cooldown = true;
+            await get_analysis(title, artists, lyrics);
+            setTimeout(() => {cooldown = false;}, 3000);
         }
     })
 
