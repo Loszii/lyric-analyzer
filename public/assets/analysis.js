@@ -6,13 +6,14 @@ function get_data() {
     let img = localStorage.getItem("img");
     let date = localStorage.getItem("date");
 
-    if (img == "undefined") {
-        img = "/res/black.jpg";
-    }
-
     //no local storage data, they either cleared or skipped landing page so redirect back
     if (title == null) {
         window.location.href = "/";
+    }
+
+    //replace img with black if not existent
+    if (img == "null") {
+        img = "/res/black.jpg";
     }
 
     return {"title": title, "artists": artists, "url": url, "img": img, "date": date};
@@ -48,6 +49,8 @@ async function get_summary(title, artists) {
 async function get_analysis(title, artists, lyrics) {
     //analyzes highlighted lyrics and writes to analysis div
     const container = document.getElementById("analysis");
+    const original_height = container.offsetHeight;
+    container.style.height = original_height + "px"; //so the height doesnt shrink and grow again, smoother change
     container.innerHTML = "LOADING...";
 
     const res = await fetch(`/api/analyze?title=${title}&artists=${artists}`, {
@@ -57,13 +60,26 @@ async function get_analysis(title, artists, lyrics) {
     })
     const data = await res.text();
 
+    container.style.height = "auto"; //put back to auto height
     container.innerHTML = data;
 }
 
 async function main() {
     //main code to run everytime this page is loaded
     const {title, artists, url, img, date} = get_data();
-    document.getElementById("thumbnail").innerHTML = `<img src=${img}><h1>${title}</h1><h1>${artists}</h1><h1>${date}</h1>`;
+
+    if (date != "null") {
+        document.getElementById("thumbnail").innerHTML = `<img src=${img}>
+        <h1>${title}</h1>
+        <h1>${artists}</h1>
+        <h1>${date}</h1>
+        <a id="credit" href="${url}">Powered by Genius</a>`;
+    } else {
+        document.getElementById("thumbnail").innerHTML = `<img src=${img}>
+        <h1>${title}</h1>
+        <h1>${artists}</h1>
+        <a id="credit" href="${url}">Powered by Genius</a>`;
+    }
 
     if (localStorage.getItem("cur") != url) {
         //need to get new api data

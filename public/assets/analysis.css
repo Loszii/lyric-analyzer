@@ -26,7 +26,8 @@ body {
 }
 
 #thumbnail img {
-    width: 100%;
+    max-width: 100%;
+    max-height: 60%;
     border-style: solid;
     border-color: rgb(25, 25, 25);
     border-radius: 5px;
@@ -44,7 +45,17 @@ body {
     margin-top: 0.1em;
 }
 
+#credit {
+    font-size: 0.75em;
+    align-self: flex-start;
+    text-decoration: none;
+    color: rgb(50, 50, 50);
+    transition: color 0.5s;
+}
 
+#credit:hover {
+    color: red;
+}
 
 #guidance {
     font-size: 0.75em;
@@ -77,6 +88,10 @@ body {
 #back {
     color: white;
     text-decoration: none;
+}
+
+#back:hover {
+    color: red;
 }
 
 .btn {
