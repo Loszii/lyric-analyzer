@@ -25,6 +25,11 @@ body {
     padding-bottom: 1em;
 }
 
+#song-meta {
+    width: 100%;
+    overflow-y: auto;
+}
+
 #thumbnail img {
     max-width: 100%;
     max-height: 60%;
@@ -63,7 +68,6 @@ body {
 
 .content {
     width: 100%;
-    max-height: 100%;
     padding: 0.5em;
     line-height: 200%;
     overflow-y: auto;
@@ -107,15 +111,21 @@ body {
 @media screen and (max-width: 1000px) {
     .col {
         flex-basis: 45%;
+        height: 75%;
+    }
+    #lyrics-col {
+        flex-basis: 80%;
     }
 }
 @media screen and (max-width: 650px) {
     .content {
-        max-height: none;
         line-height: 150%;
     }
     .col {
         height: auto;
         flex-basis: 80%;
+    }
+    #thumbnail img {
+        max-height: none;
     }
 }

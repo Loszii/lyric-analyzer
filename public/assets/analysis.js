@@ -70,15 +70,19 @@ async function main() {
 
     if (date != "null") {
         document.getElementById("thumbnail").innerHTML = `<img src=${img}>
-        <h1>${title}</h1>
-        <h1>${artists}</h1>
-        <h1>${date}</h1>
-        <a id="credit" href="${url}">Powered by Genius</a>`;
+        <div id="song-meta">
+            <h1>${title}</h1>
+            <h1>${artists}</h1>
+            <h1>${date}</h1>
+            <a id="credit" href="${url}">Powered by Genius</a>
+        </div>`;
     } else {
         document.getElementById("thumbnail").innerHTML = `<img src=${img}>
-        <h1>${title}</h1>
-        <h1>${artists}</h1>
-        <a id="credit" href="${url}">Powered by Genius</a>`;
+        <div id="song-meta">
+            <h1>${title}</h1>
+            <h1>${artists}</h1>
+            <a id="credit" href="${url}">Powered by Genius</a>
+        </div>`;
     }
 
     if (localStorage.getItem("cur") != url) {
