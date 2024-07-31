@@ -109,9 +109,12 @@ body {
 
 /*responsiveness*/
 @media screen and (max-width: 1000px) {
+    #container, html, body {
+        height: auto;
+    }
     .col {
         flex-basis: 45%;
-        height: 75%;
+        height: 75vh;
     }
     #lyrics-col {
         flex-basis: 80%;
