@@ -33,13 +33,7 @@ const model = genAI.getGenerativeModel({model: "gemini-1.5-flash", safetySetting
 
 const md = markdownIt(); //for markdown to html
 
-const local = process.env.LOCAL; //TRUE or FALSE
-let spotify_redirect_uri;
-if (local == "TRUE") {
-    spotify_redirect_uri = "http://localhost:3000/callback";
-} else {
-    spotify_redirect_uri = "https://lyric-analyzer.vercel.app/callback";
-}
+let spotify_redirect_uri = "http://localhost:3000/callback";
 
 //setting up app
 const app = express();
