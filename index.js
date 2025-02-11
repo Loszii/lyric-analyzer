@@ -140,7 +140,7 @@ function get_best_hit(hits, song_name, song_artists, threshold) {
 
 //our api for front end
 app.get("/api/lyrics", async (req, res) => {
-    //scrapes the lyrics off of genius url in cookies
+    //scrapes the lyrics off of genius url in query
     let url = req.query.url;
 
     try { //string for cookies
@@ -224,7 +224,7 @@ app.get("/api/spotify", async (req, res) => {
     //spotify endpoint to get the current title/artists
     let token = req.cookies.token;
     if (token == undefined) {
-        //redirect useres to login with spotify and authorize us to see their playback
+        //redirect users to login with spotify and authorize us to see their playback
         if (req.cookies.refresh == undefined) {
             //no refresh token, send the redirect url back to front end
             console.log("Having user authorize with Spotify");

@@ -12,11 +12,4 @@ A site that aims to elevate the music listening experience. Ever wondered if the
 
 # Tech Stack
 
-I used **Node.js** and **Express** for the backend, and then plain **HTML**, **CSS**, and **JS** for the front end. See the package.json for more. The APIs I used are **Genius API** and the **Gemini API**.
-
-# Spotify API
-
-I have fully incorporated the **Spotify API** into this project, since this would get around the user needing to search a song. Sadly, Spotify has rejected my site from using their API to display lyrics. **"Synchronization: Spotify content is used in the background of visual media, such as lyrics We will therefore not be able to support your use case.**. This is a huge bummer, as I already coded the functionality. However, the code is still in the site for anyone wanting to see it.
-
-# How to Use
-Head over to https://lyric-analyzer.vercel.app/ to test it out!
+I used **Node.js** and **Express** for the backend, and then plain **HTML**, **CSS**, and **JS** for the front end. See the package.json for more. The APIs I implemented are **Genius API**, **Spotify API**, and **Gemini API**.
